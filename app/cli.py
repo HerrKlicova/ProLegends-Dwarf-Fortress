@@ -108,7 +108,25 @@ def cmd_diagnostico(_: argparse.Namespace) -> int:
     from .parser import organizer
     from .parser.discover import discover
 
-    print(f"Carpeta: {config.IMPORTS_DIR}")
+    estado = config.diagnostico_clave()
+    print("Configuración de la clave de la API:")
+    print(f"      fichero:            {estado['ruta']}")
+    print(f"      ¿existe?            {'sí' if estado['existe'] else 'NO'}")
+    if estado["fallo_lectura"]:
+        print(f"      problema al leerlo: {estado['fallo_lectura']}")
+    if estado["mal_nombrados"]:
+        print(f"      OJO, sobra:         {', '.join(estado['mal_nombrados'])}")
+    if estado["tiene_clave"]:
+        clave = estado["clave"]
+        print(f"      clave encontrada:   {clave[:12]}...{clave[-4:]}  ({len(clave)} caracteres)")
+        if estado["formato_raro"]:
+            print("      OJO: no empieza por 'sk-ant-'")
+    else:
+        print("      clave encontrada:   NINGUNA")
+        print(f"      ¿está la línea?     {'sí, pero vacía' if estado['linea_presente'] else 'no'}")
+    print(f"      modelo:             {config.modelo_ia()}")
+
+    print(f"\nCarpeta: {config.IMPORTS_DIR}")
     ficheros = sorted(config.IMPORTS_DIR.rglob("*.xml"))
     if not ficheros:
         print("  (no hay ningún .xml)")

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Optional
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,31 +21,95 @@ WEB_DIR = BASE_DIR / "web"
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
 
-def _load_dotenv() -> None:
-    """Carga .env si existe. Usa python-dotenv si está disponible; si no, un
-    parser minimo, para que el arranque nunca dependa de una libreria opcional."""
-    env_path = BASE_DIR / ".env"
-    if not env_path.exists():
-        return
-    try:
-        from dotenv import load_dotenv  # type: ignore
+# El Bloc de notas de Windows tiene la costumbre de anadir .txt al guardar, y
+# de ofrecer codificaciones que no son UTF-8. Se contemplan las dos cosas.
+_CODIFICACIONES = ("utf-8-sig", "utf-8", "utf-16", "utf-16-le", "latin-1")
+_NOMBRES_ERRONEOS = (".env.txt", ".env.text", "env", "env.txt", ".env.ini", ".env.cfg")
 
-        load_dotenv(env_path, override=False)
-        return
-    except Exception:
-        pass
+
+def ruta_env() -> Path:
+    """El fichero de configuración del usuario."""
+    return BASE_DIR / ".env"
+
+
+def env_mal_nombrados() -> list[Path]:
+    """Ficheros que parecen un .env al que se le ha colado otro nombre."""
+    return [BASE_DIR / nombre for nombre in _NOMBRES_ERRONEOS if (BASE_DIR / nombre).exists()]
+
+
+def leer_env(path: Optional[Path] = None) -> tuple[dict, str]:
+    """Lee un fichero .env y devuelve (valores, motivo_del_fallo).
+
+    Prueba varias codificaciones porque el fichero lo escribe una persona con
+    el Bloc de notas, no un programa.
+    """
+    path = Path(path or ruta_env())
+    if not path.exists():
+        return {}, "no existe"
+
     try:
-        for raw in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = value
-    except OSError:
-        pass
+        crudo = path.read_bytes()
+    except OSError as exc:
+        return {}, f"no se ha podido leer: {exc}"
+
+    texto = None
+    for codificacion in _CODIFICACIONES:
+        try:
+            candidato = crudo.decode(codificacion)
+        except (UnicodeDecodeError, LookupError):
+            continue
+        # Un UTF-16 leído como si fuese de un byte deja ceros por medio.
+        if "\x00" in candidato:
+            continue
+        texto = candidato
+        break
+    if texto is None:
+        return {}, "el fichero está en una codificación que no se entiende"
+
+    valores: dict[str, str] = {}
+    for linea in texto.splitlines():
+        limpia = linea.strip().lstrip("\ufeff")
+        if not limpia or limpia.startswith("#") or "=" not in limpia:
+            continue
+        clave, _, valor = limpia.partition("=")
+        clave = clave.strip()
+        valor = valor.strip().strip('"').strip("'").strip()
+        if clave:
+            valores[clave] = valor
+    return valores, ""
+
+
+def ajuste(nombre: str, por_defecto: str = "") -> str:
+    """Valor de un ajuste, releyendo el .env en el momento.
+
+    Se relee cada vez a propósito: así, si cambias el .env, basta con recargar
+    la página en el navegador; no hace falta cerrar y volver a abrir start.bat.
+    El .env manda sobre las variables de entorno del sistema.
+    """
+    valores, _ = leer_env()
+    valor = valores.get(nombre)
+    if valor:
+        return valor
+    return os.environ.get(nombre, por_defecto)
+
+
+def ajuste_int(nombre: str, por_defecto: int) -> int:
+    try:
+        return int((ajuste(nombre) or "").strip() or por_defecto)
+    except (TypeError, ValueError):
+        return por_defecto
+
+
+def _load_dotenv() -> None:
+    """Vuelca el .env en las variables de entorno al arrancar.
+
+    Sirve para las herramientas que leen del entorno; los ajustes propios de la
+    aplicación se consultan con ajuste(), que relee el fichero cada vez.
+    """
+    valores, _ = leer_env()
+    for clave, valor in valores.items():
+        if clave not in os.environ:
+            os.environ[clave] = valor
 
 
 _load_dotenv()
@@ -66,9 +131,40 @@ HOST = env("PROLEGENDS_HOST", "127.0.0.1")
 PORT = env_int("PROLEGENDS_PORT", 8420)
 
 # --- API de Anthropic (fase 2, crónicas narradas) ---
-ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", "claude-sonnet-5")
-ANTHROPIC_MAX_TOKENS = env_int("ANTHROPIC_MAX_TOKENS", 4000)
+# Se leen con funciones y no con constantes para que un cambio en el .env se
+# note sin tener que cerrar y volver a abrir el servidor.
+MODELO_POR_DEFECTO = "claude-sonnet-5"
+
+
+def clave_api() -> str:
+    return ajuste("ANTHROPIC_API_KEY", "")
+
+
+def modelo_ia() -> str:
+    return ajuste("ANTHROPIC_MODEL", MODELO_POR_DEFECTO) or MODELO_POR_DEFECTO
+
+
+def max_tokens_ia() -> int:
+    return ajuste_int("ANTHROPIC_MAX_TOKENS", 4000)
+
+
+def diagnostico_clave() -> dict:
+    """Qué pasa exactamente con la clave, para poder decírselo al usuario."""
+    ruta = ruta_env()
+    valores, fallo = leer_env(ruta)
+    despistados = env_mal_nombrados()
+    clave = clave_api()
+    estado = {
+        "ruta": str(ruta),
+        "existe": ruta.exists(),
+        "clave": clave,
+        "tiene_clave": bool(clave),
+        "mal_nombrados": [str(x) for x in despistados],
+        "fallo_lectura": fallo if ruta.exists() else "",
+        "linea_presente": "ANTHROPIC_API_KEY" in valores,
+        "formato_raro": bool(clave) and not clave.startswith("sk-ant-"),
+    }
+    return estado
 
 # --- Avisos del panel de fortaleza ---
 DEFAULT_ALERT_RADIUS = env_int("PROLEGENDS_ALERT_RADIUS", 20)

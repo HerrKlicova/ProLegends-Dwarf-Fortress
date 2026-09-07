@@ -24,6 +24,7 @@ from app.api import atlas, figures, fortress as fapi  # noqa: E402
 from app.errors import ProLegendsError  # noqa: E402
 from app.parser import organizer  # noqa: E402
 from app.parser.discover import discover  # noqa: E402
+from app.ai import chronicler  # noqa: E402
 from app.parser.importer import import_all  # noqa: E402
 
 fallos: list[str] = []
@@ -246,6 +247,54 @@ def main() -> int:
                   + (f": {huerfanas}" if huerfanas else ""))
         comprobar(len(pedidas) > 10,
                   f"se han revisado {len(pedidas)} rutas distintas")
+
+        print("\n12. La clave de la API se lee pase lo que pase")
+        from app import config as _config  # noqa: E402
+
+        env_real = RAIZ / ".env"
+        respaldo = env_real.read_bytes() if env_real.exists() else None
+        sobrante = RAIZ / ".env.txt"
+        CLAVE = "sk-ant-api03-COMPROBACION"
+        plantilla = (RAIZ / ".env.example").read_text(encoding="utf-8")
+        con_clave = plantilla.replace("\nANTHROPIC_API_KEY=\n", f"\nANTHROPIC_API_KEY={CLAVE}\n")
+
+        def limpiar_env():
+            env_real.unlink(missing_ok=True)
+            sobrante.unlink(missing_ok=True)
+
+        try:
+            for etiqueta, codificacion in (
+                ("guardado en UTF-8", "utf-8"),
+                ("guardado como Unicode (UTF-16)", "utf-16"),
+                ("guardado con BOM", "utf-8-sig"),
+            ):
+                limpiar_env()
+                env_real.write_text(con_clave, encoding=codificacion)
+                comprobar(_config.clave_api() == CLAVE, f"la clave se lee con el fichero {etiqueta}")
+
+            limpiar_env()
+            env_real.write_text(
+                con_clave.replace(f"KEY={CLAVE}", f'KEY = "{CLAVE}"  '), encoding="utf-8"
+            )
+            comprobar(_config.clave_api() == CLAVE, "la clave se lee con espacios y comillas de más")
+
+            limpiar_env()
+            sobrante.write_text(con_clave, encoding="utf-8")
+            ok_txt, motivo_txt = chronicler.disponible()
+            comprobar(not ok_txt and ".env.txt" in motivo_txt,
+                      "si el Bloc de notas dejó un .env.txt, se dice cuál es el problema")
+
+            limpiar_env()
+            env_real.write_text(plantilla, encoding="utf-8")
+            comprobar(_config.clave_api() == "", "una línea vacía no cuenta como clave")
+            # Y ahora, sin reiniciar nada, se pega la clave:
+            env_real.write_text(con_clave, encoding="utf-8")
+            comprobar(_config.clave_api() == CLAVE,
+                      "al editar el .env, el cambio se nota SIN reiniciar el servidor")
+        finally:
+            limpiar_env()
+            if respaldo is not None:
+                env_real.write_bytes(respaldo)
 
         conn.close()
     finally:

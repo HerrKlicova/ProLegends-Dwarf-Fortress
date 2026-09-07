@@ -10,6 +10,37 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.1.3 — La clave de la API se lee pase lo que pase
+
+*Arreglos.*
+
+Había tres formas de poner bien la clave y que la aplicación siguiera diciendo
+que faltaba, sin explicar por qué.
+
+**Arreglado**
+
+- **Ya no hace falta reiniciar.** La clave se leía una sola vez al arrancar, así
+  que si editabas el `.env` con el programa abierto, no se enteraba. Ahora se
+  relee en el momento: pegas la clave, guardas, recargas la página y ya está.
+- **El `.env.txt` del Bloc de notas.** Al guardar, el Bloc de notas añade `.txt`
+  sin avisar; el fichero pasaba a llamarse `.env.txt` y la aplicación no lo veía
+  ni decía nada. Ahora lo detecta y te dice que le cambies el nombre.
+- **Otras codificaciones.** Si el fichero se guardaba como *Unicode* en vez de
+  UTF-8, el arranque fallaba. Ahora se prueban varias codificaciones.
+- Espacios de más y comillas alrededor de la clave ya no molestan.
+- El aviso de la pantalla dice **exactamente** cuál de los casos anteriores es:
+  que no existe el fichero, que existe pero la línea está vacía, que la línea no
+  está, que sobra un `.env.txt`, o que la clave no tiene la pinta habitual.
+
+**Añadido**
+
+- `python -m app.cli diagnostico` dice ahora si encuentra la clave, en qué
+  fichero, cuántos caracteres tiene y qué modelo va a usar. La clave sale
+  tapada (solo el principio y el final), así que se puede pegar sin miedo.
+- Cambiar el modelo en el `.env` también surte efecto sin reiniciar.
+
+---
+
 ## v1.1.2 — Poner la clave de la API se explica sola
 
 *Arreglos.*

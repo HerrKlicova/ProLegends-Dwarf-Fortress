@@ -31,7 +31,7 @@ def estado():
     return {
         "disponible": ok,
         "motivo": motivo,
-        "modelo": config.ANTHROPIC_MODEL,
+        "modelo": config.modelo_ia(),
     }
 
 
@@ -48,7 +48,7 @@ def preparar(payload: dict = Body(...), conn: sqlite3.Connection = Conn):
     return {
         "disponible": ok,
         "motivo": motivo,
-        "modelo": config.ANTHROPIC_MODEL,
+        "modelo": config.modelo_ia(),
         "titulo": contexto.get("titulo"),
         "hechos": contexto.get("eventos_incluidos", 0),
         "caracteres_contexto": len(texto),

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from .. import config
@@ -53,25 +54,51 @@ def cacheada(conn: sqlite3.Connection, world_id: int, ambito: dict) -> Optional[
 
 
 def disponible() -> tuple[bool, str]:
-    if not config.ANTHROPIC_API_KEY:
-        env = config.BASE_DIR / ".env"
-        if env.exists():
+    """Si se puede llamar a la API y, si no, exactamente por qué no."""
+    estado = config.diagnostico_clave()
+    ruta = estado["ruta"]
+
+    if not estado["tiene_clave"]:
+        if estado["mal_nombrados"]:
+            despistado = estado["mal_nombrados"][0]
             return False, (
-                f"Falta tu clave. Abre este fichero con el Bloc de notas: {env} — "
-                "busca la línea que pone ANTHROPIC_API_KEY= y pega la clave justo "
-                "detrás del igual, sin espacios ni comillas. Guarda y vuelve a "
-                "arrancar start.bat."
+                f"Hay un fichero llamado '{Path(despistado).name}' en la carpeta del "
+                "programa. Eso pasa cuando el Bloc de notas añade '.txt' al guardar. "
+                f"Cámbiale el nombre a '.env' (sin nada detrás) y listo. Ruta: {despistado}"
+            )
+        if not estado["existe"]:
+            return False, (
+                f"No existe el fichero de configuración. Debería estar aquí: {ruta}. "
+                "Vuelve a arrancar start.bat y se creará solo; después ábrelo con el "
+                "Bloc de notas y pon ahí tu clave."
+            )
+        if estado["fallo_lectura"]:
+            return False, (
+                f"El fichero {ruta} existe pero {estado['fallo_lectura']}. Ábrelo con "
+                "el Bloc de notas, y al guardar elige la codificación UTF-8."
+            )
+        if estado["linea_presente"]:
+            return False, (
+                f"En {ruta} está la línea ANTHROPIC_API_KEY= pero sin nada detrás. "
+                "Pega ahí la clave, justo después del igual, y guarda con Ctrl+S. "
+                "No hace falta reiniciar: recarga la página y ya."
             )
         return False, (
-            f"No existe el fichero de configuración. Debería estar en {env}. "
-            "Vuelve a arrancar start.bat y se creará solo; después ábrelo con el "
-            "Bloc de notas y pon ahí tu clave."
+            f"En {ruta} no aparece la línea ANTHROPIC_API_KEY. Añádela al final del "
+            "fichero, con tu clave detrás del igual."
         )
+
     try:
         import anthropic  # noqa: F401
     except ImportError:
         return False, (
             "Falta el paquete 'anthropic'. Vuelve a ejecutar start.bat para instalarlo."
+        )
+
+    if estado["formato_raro"]:
+        return True, (
+            "Aviso: la clave no empieza por 'sk-ant-', que es como empiezan las de "
+            "Anthropic. Si la crónica falla, revisa que la copiaste entera."
         )
     return True, ""
 
@@ -107,15 +134,15 @@ def generar(
             "No hay hechos registrados en ese ámbito, así que no hay nada que narrar."
         )
     texto_datos = ctx.a_texto(contexto)
-    modelo = config.ANTHROPIC_MODEL
+    modelo = config.modelo_ia()
 
     import anthropic
 
-    cliente = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    cliente = anthropic.Anthropic(api_key=config.clave_api())
     try:
         respuesta = cliente.messages.create(
             model=modelo,
-            max_tokens=config.ANTHROPIC_MAX_TOKENS,
+            max_tokens=config.max_tokens_ia(),
             system=SISTEMA,
             messages=[
                 {
