@@ -8,6 +8,9 @@ desde el navegador.
 No sube nada a internet: todo se queda en tu ordenador. La única excepción son
 las crónicas narradas, y solo cuando tú las pides expresamente.
 
+El historial de versiones, con lo que cambia en cada una, está en
+[CHANGELOG.md](CHANGELOG.md).
+
 ---
 
 ## Descargar
