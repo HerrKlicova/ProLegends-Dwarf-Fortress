@@ -13,6 +13,7 @@ from typing import Optional
 
 from .. import config
 from ..errors import ProLegendsError
+from . import almacen
 from . import context as ctx
 
 SISTEMA = (
@@ -44,13 +45,17 @@ def clave_ambito(ambito: dict) -> str:
     raise ProLegendsError("Ámbito de crónica desconocido.")
 
 
+def nombre_mundo(conn: sqlite3.Connection, world_id: int) -> str:
+    fila = conn.execute("SELECT name FROM worlds WHERE id = ?", (world_id,)).fetchone()
+    return (fila["name"] if fila else "") or f"mundo-{world_id}"
+
+
 def cacheada(conn: sqlite3.Connection, world_id: int, ambito: dict) -> Optional[dict]:
-    tipo = ambito.get("tipo")
-    fila = conn.execute(
-        """SELECT * FROM chronicles WHERE world_id = ? AND scope_type = ? AND scope_key = ?""",
-        (world_id, tipo, clave_ambito(ambito)),
-    ).fetchone()
-    return dict(fila) if fila else None
+    """La crónica ya guardada, si la hay. Vive en disco, no en la base de datos."""
+    return almacen.leer(
+        nombre_mundo(conn, world_id), ambito.get("tipo", ""), clave_ambito(ambito)
+    )
+
 
 
 def disponible() -> tuple[bool, str]:
@@ -129,10 +134,11 @@ def generar(
         previa = cacheada(conn, world_id, ambito)
         if previa:
             return {
-                "texto": previa["text"],
-                "titulo": previa["title"],
-                "modelo": previa["model"],
-                "creada": previa["created_at"],
+                "texto": previa["texto"],
+                "titulo": previa.get("titulo"),
+                "modelo": previa.get("modelo"),
+                "creada": previa.get("generada"),
+                "fichero": previa.get("fichero"),
                 "de_cache": True,
             }
 
@@ -175,28 +181,25 @@ def generar(
     salida = "\n\n".join(p.strip() for p in partes if p.strip())
     uso = getattr(respuesta, "usage", None)
 
-    conn.execute(
-        """INSERT INTO chronicles
-             (world_id, export_id, scope_type, scope_key, model, context_hash,
-              title, text, tokens_in, tokens_out, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)
-           ON CONFLICT(world_id, scope_type, scope_key) DO UPDATE SET
-             export_id = excluded.export_id, model = excluded.model,
-             context_hash = excluded.context_hash, title = excluded.title,
-             text = excluded.text, tokens_in = excluded.tokens_in,
-             tokens_out = excluded.tokens_out, created_at = excluded.created_at""",
-        (
-            world_id, export_id, tipo, clave, modelo,
-            ctx.huella(texto_datos, modelo), contexto.get("titulo"), salida,
-            getattr(uso, "input_tokens", None), getattr(uso, "output_tokens", None),
-            _now(),
-        ),
+    fichero = almacen.guardar(
+        nombre_mundo(conn, world_id), tipo, clave,
+        {
+            "titulo": contexto.get("titulo"),
+            "texto": salida,
+            "modelo": modelo,
+            "creada": _now(),
+            "tokens_entrada": getattr(uso, "input_tokens", None),
+            "tokens_salida": getattr(uso, "output_tokens", None),
+            "export_id": export_id,
+        },
     )
+
     return {
         "texto": salida,
         "titulo": contexto.get("titulo"),
         "modelo": modelo,
         "creada": _now(),
+        "fichero": str(fichero),
         "de_cache": False,
         "tokens": {
             "entrada": getattr(uso, "input_tokens", None),

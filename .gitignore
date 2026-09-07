@@ -17,6 +17,13 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+# --- Crónicas generadas por IA ---
+# NO se ignoran a propósito: son lo único que cuesta dinero y no se puede
+# regenerar gratis, así que si algún día subes la carpeta quedan respaldadas.
+# Si prefieres que no salgan de tu ordenador, quita la almohadilla de la
+# línea siguiente.
+# data/cronicas/
+
 # --- Base de datos generada (se regenera importando) ---
 *.db
 *.sqlite

@@ -10,6 +10,35 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.2.0 — Las crónicas se guardan aparte y ordenadas
+
+*Función nueva, y un arreglo importante.*
+
+**Arreglado (importante)**
+
+- **Las crónicas ya no viven dentro de la base de datos.** Estaban ahí, así que
+  borrar `data/db/` —o ejecutar `reiniciar-bd`— se las llevaba por delante. Son
+  lo único de la aplicación que cuesta dinero y que no se puede volver a
+  obtener gratis, de modo que ahora se guardan aparte, como ficheros de texto
+  en `data/cronicas/<mundo>/`.
+- Las crónicas que ya tuvieras guardadas en la base de datos **se rescatan
+  solas** al arrancar la versión nueva: no se pierde nada.
+- `reiniciar-bd` avisa de que las crónicas no se tocan.
+
+**Añadido**
+
+- Cada crónica es un fichero `.md` con su cabecera (mundo, ámbito, modelo,
+  fecha, tokens) y el texto debajo. **Se puede abrir con el Bloc de notas** sin
+  abrir el programa, y para llevárselas a otro ordenador basta con copiar la
+  carpeta.
+- **La pestaña de crónicas se ha reorganizado.** A la izquierda, las guardadas
+  agrupadas en *Rangos de años*, *Figuras históricas* y *Lugares y fortalezas*,
+  cada grupo plegable y con su cuenta; a la derecha, la que elijas. Abrir una ya
+  generada no cuesta nada.
+- Debajo de cada crónica se indica en qué fichero está guardada.
+
+---
+
 ## v1.1.4 — El aviso de la clave dice qué fichero ha leído
 
 *Arreglos.*

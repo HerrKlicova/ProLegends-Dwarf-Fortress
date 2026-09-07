@@ -62,5 +62,6 @@ const API = (() => {
     prepararCron:  (cuerpo)           => post('/api/cronicas/preparar', cuerpo),
     generarCron:   (cuerpo)           => post('/api/cronicas', cuerpo),
     cronicas:      (mid)              => get(`/api/mundos/${mid}/cronicas`),
+    cronica:       (mid, amb, clave)  => get(`/api/mundos/${mid}/cronicas/${amb}/${encodeURIComponent(clave)}`),
   };
 })();

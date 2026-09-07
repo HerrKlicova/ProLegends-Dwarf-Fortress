@@ -19,7 +19,7 @@ from .errors import ProLegendsError
 app = FastAPI(
     title="ProLegends",
     description="Explorador local del archivo de leyendas de Dwarf Fortress",
-    version="1.1.4",
+    version="1.2.0",
     docs_url="/api/docs",
     redoc_url=None,
 )
@@ -31,6 +31,13 @@ def _preparar() -> None:
     conn = dbmod.connect()
     try:
         dbmod.init_db(conn)
+        # Las versiones anteriores a la 1.2.0 guardaban las crónicas dentro de la
+        # base de datos. Se sacan a fichero para que no se pierdan.
+        from .ai import almacen
+
+        rescatadas = almacen.migrar_desde_bd(conn)
+        if rescatadas:
+            print(f"  {rescatadas} crónica(s) guardadas ya en data/cronicas/")
     finally:
         conn.close()
 

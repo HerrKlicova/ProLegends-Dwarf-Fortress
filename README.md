@@ -50,6 +50,8 @@ Descomprímela en una carpeta aparte y **copia a la carpeta nueva estas dos
 cosas de la vieja**, si las tienes:
 
 - el fichero `.env` (tu clave de la API)
+- **la carpeta `data/cronicas/`** (las crónicas generadas: es lo único que
+  cuesta dinero y no se puede recuperar gratis)
 - la carpeta `data/db/` (la base de datos, para no reimportar los 45 MB)
 
 Los XML de `data/imports/` puedes copiarlos también, o volver a dejarlos ahí.
@@ -194,6 +196,10 @@ sin inventarse nada que no esté en los datos.
 
 - La clave se lee de `.env` (nunca está en el código). Copia `.env.example` a
   `.env` y pon ahí tu `ANTHROPIC_API_KEY`.
+- **Cada crónica se guarda como un fichero de texto** en `data/cronicas/<mundo>/`.
+  Se pueden leer con el Bloc de notas sin abrir el programa, y **no se pierden
+  al borrar la base de datos**. La pestaña las agrupa por rangos de años,
+  figuras históricas y lugares.
 - Antes de cada llamada **avisa de que va a consumir API** y dice cuántos hechos y
   cuánto contexto va a enviar.
 - El resultado queda **guardado**: volver a pedir la misma crónica no cuesta nada.
@@ -244,6 +250,7 @@ web/           interfaz: HTML, CSS y JavaScript a pelo, sin compilar nada
 data/
   imports/     tus XML (no van al repositorio)
   db/          la base de datos generada (no va al repositorio)
+  cronicas/    las crónicas de IA, un fichero de texto por crónica
 tools/         utilidades sueltas
 ```
 
@@ -328,6 +335,7 @@ correcto` o listando lo que falla.
 - **Un export da error de XML corrupto**: la aplicación lo dice en pantalla y
   sigue con los demás. Vuelve a exportar las leyendas desde el juego.
 - **Quiero empezar de cero**: borra la carpeta `data/db/` y vuelve a arrancar.
+  Las crónicas de `data/cronicas/` no se tocan.
 - **Aparecen mundos raros, o dice que falta el `_plus` estando ahí**: casi
   siempre es que los dos ficheros del export llegaron con nombres distintos.
   Ejecuta `python -m app.cli diagnostico`: dice, fichero a fichero, qué mundo

@@ -296,6 +296,66 @@ def main() -> int:
             if respaldo is not None:
                 env_real.write_bytes(respaldo)
 
+        print("\n13. Las crónicas no se pierden")
+        from app.ai import almacen  # noqa: E402
+
+        # Se trabaja sobre una carpeta aparte para no tocar las del usuario.
+        carpeta_real = almacen.config.DATA_DIR
+        almacen.config.DATA_DIR = tmp / "datos"
+        try:
+            MUNDO = "mundoprueba"
+            almacen.guardar(MUNDO, "figura", "figura:7",
+                            {"titulo": "Vida de Alguien", "modelo": "claude-sonnet-5",
+                             "texto": "Nació en el año -51.\n"})
+            almacen.guardar(MUNDO, "anyos", "anyos:1-50",
+                            {"titulo": "Años 1 a 50", "texto": "Los primeros años.\n"})
+            leida = almacen.leer(MUNDO, "figura", "figura:7")
+            comprobar(leida is not None and "Nació en el año -51." in leida["texto"],
+                      "una crónica guardada se vuelve a leer entera")
+            comprobar(leida["modelo"] == "claude-sonnet-5",
+                      "se conserva con qué modelo se generó")
+            comprobar(len(almacen.listar(MUNDO)) == 2, "el listado las encuentra todas")
+            ambitos = {g for g in (c["ambito"] for c in almacen.listar(MUNDO))}
+            comprobar(ambitos == {"figura", "anyos"},
+                      f"cada una sabe a qué ámbito pertenece: {sorted(ambitos)}")
+
+            ficheros = list((almacen.config.DATA_DIR / "cronicas").rglob("*.md"))
+            comprobar(len(ficheros) == 2, "son ficheros de texto sueltos, uno por crónica")
+            crudo = ficheros[0].read_text(encoding="utf-8")
+            comprobar("---" in crudo and len(crudo.strip()) > 20,
+                      "el fichero se puede abrir y leer con cualquier editor")
+
+            # Lo que de verdad importa: borrar la base de datos no se las lleva.
+            conn3 = dbmod.connect(tmp / "borrable.db")
+            dbmod.init_db(conn3)
+            conn3.close()
+            (tmp / "borrable.db").unlink()
+            comprobar(len(almacen.listar(MUNDO)) == 2,
+                      "siguen ahí después de borrar la base de datos")
+
+            # Y las que quedasen en una base de datos antigua se rescatan.
+            conn4 = dbmod.connect(tmp / "antigua.db")
+            dbmod.init_db(conn4)
+            conn4.execute("INSERT INTO worlds (name, created_at) VALUES (?, ?)",
+                          ("mundoantiguo", "2026-01-01T00:00:00+00:00"))
+            wid = conn4.execute("SELECT id FROM worlds WHERE name = 'mundoantiguo'").fetchone()["id"]
+            conn4.execute(
+                """INSERT INTO chronicles (world_id, scope_type, scope_key, model,
+                                           title, text, created_at)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (wid, "figura", "figura:99", "claude-sonnet-5", "Crónica antigua",
+                 "Texto que ya estaba pagado.\n", "2026-01-01T00:00:00+00:00"))
+            rescatadas = almacen.migrar_desde_bd(conn4)
+            comprobar(rescatadas == 1, "una crónica de una versión antigua se rescata a fichero")
+            vieja = almacen.leer("mundoantiguo", "figura", "figura:99")
+            comprobar(vieja is not None and "ya estaba pagado" in (vieja or {}).get("texto", ""),
+                      "y se lee con su texto intacto")
+            comprobar(almacen.migrar_desde_bd(conn4) == 0,
+                      "al repetir el rescate no se duplica nada")
+            conn4.close()
+        finally:
+            almacen.config.DATA_DIR = carpeta_real
+
         conn.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

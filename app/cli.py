@@ -253,7 +253,8 @@ def cmd_reiniciar(_: argparse.Namespace) -> int:
         if candidato.exists():
             candidato.unlink()
             borrados += 1
-    print(f"Base de datos eliminada ({borrados} ficheros). Los XML de data/imports/ no se han tocado.")
+    print(f"Base de datos eliminada ({borrados} ficheros).")
+    print("No se han tocado los XML de data/imports/ ni las crónicas de data/cronicas/.")
     return 0
 
 
@@ -290,7 +291,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_srv.add_argument("--abrir", action="store_true", help="abre el navegador solo")
     p_srv.set_defaults(func=cmd_servidor)
 
-    p_res = sub.add_parser("reiniciar-bd", help="borra la base de datos generada")
+    p_res = sub.add_parser(
+        "reiniciar-bd",
+        help="borra la base de datos generada (las crónicas NO se tocan)",
+    )
     p_res.set_defaults(func=cmd_reiniciar)
     return parser
 

@@ -207,3 +207,21 @@ pre.consola { background: #0d0c0a; border: 1px solid var(--borde); border-radius
   .panel-der { width: 300px; flex-basis: 300px; }
   .panel-izq { width: 210px; flex-basis: 210px; }
 }
+
+/* --------------------------------------------------- arbol de cronicas */
+.arbol details { margin-bottom: .35rem; }
+.arbol summary { cursor: pointer; font-size: .78rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--acento); padding: .2rem 0; list-style: none; }
+.arbol summary::-webkit-details-marker { display: none; }
+.arbol summary::before { content: "\25B8"; display: inline-block; width: 1em;
+  transition: transform .12s; color: var(--texto-suave); }
+.arbol details[open] > summary::before { transform: rotate(90deg); }
+.arbol summary .cuenta { color: var(--texto-suave); font-size: .72rem;
+  text-transform: none; letter-spacing: 0; }
+.arbol .item { padding: .3rem .45rem .3rem 1.5rem; border-radius: 4px; cursor: pointer;
+  font-size: .84rem; display: flex; flex-direction: column; gap: .1rem; }
+.arbol .item:hover { background: var(--fondo-3); }
+.arbol .item.activo { background: var(--fondo-3); outline: 1px solid var(--acento); }
+.arbol .item .sub { color: var(--texto-suave); font-size: .7rem; }
+.rango { display: flex; align-items: center; gap: .4rem; }
+.rango input { width: 100%; min-width: 0; }

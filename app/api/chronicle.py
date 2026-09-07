@@ -10,9 +10,9 @@ import sqlite3
 
 from fastapi import APIRouter, Body
 
-from .. import config, db as dbmod
-from ..ai import chronicler, context as ctx
-from ..errors import ProLegendsError
+from .. import config
+from ..ai import almacen, chronicler, context as ctx
+from ..errors import NotFoundError, ProLegendsError
 from .common import Conn, get_export
 
 router = APIRouter(tags=["cronicas"])
@@ -71,10 +71,52 @@ def generar(payload: dict = Body(...), conn: sqlite3.Connection = Conn):
 
 @router.get("/mundos/{world_id}/cronicas")
 def listar(world_id: int, conn: sqlite3.Connection = Conn):
-    filas = dbmod.all_(
-        conn,
-        """SELECT id, scope_type, scope_key, title, model, created_at
-             FROM chronicles WHERE world_id = ? ORDER BY created_at DESC""",
-        (world_id,),
-    )
-    return {"cronicas": filas}
+    """Las crónicas guardadas de un mundo, ya agrupadas por ámbito."""
+    mundo = chronicler.nombre_mundo(conn, world_id)
+    guardadas = almacen.listar(mundo)
+
+    grupos = []
+    for ambito in almacen.ORDEN_AMBITO:
+        de_este = [c for c in guardadas if c.get("ambito") == ambito]
+        if not de_este:
+            continue
+        grupos.append(
+            {
+                "ambito": ambito,
+                "nombre": almacen.NOMBRES_AMBITO.get(ambito, ambito),
+                "cronicas": sorted(de_este, key=_orden_dentro_del_grupo),
+            }
+        )
+    # Cualquier ámbito que se añada en el futuro y no esté en la lista de arriba.
+    conocidos = set(almacen.ORDEN_AMBITO)
+    otros = [c for c in guardadas if c.get("ambito") not in conocidos]
+    if otros:
+        grupos.append({"ambito": "otros", "nombre": "Otras", "cronicas": otros})
+
+    return {
+        "mundo": mundo,
+        "carpeta": str(almacen.carpeta_mundo(mundo)),
+        "total": len(guardadas),
+        "grupos": grupos,
+    }
+
+
+def _orden_dentro_del_grupo(cronica: dict):
+    """Los años por su primer año; lo demás, por título."""
+    clave = cronica.get("clave", "")
+    if clave.startswith("anyos:"):
+        try:
+            return (0, int(clave.split(":", 1)[1].split("-")[0]), "")
+        except (ValueError, IndexError):
+            return (0, 0, clave)
+    return (0, 0, (cronica.get("titulo") or clave).lower())
+
+
+@router.get("/mundos/{world_id}/cronicas/{ambito}/{clave}")
+def obtener(world_id: int, ambito: str, clave: str, conn: sqlite3.Connection = Conn):
+    """El texto completo de una crónica ya guardada. No llama a la API."""
+    mundo = chronicler.nombre_mundo(conn, world_id)
+    datos = almacen.leer(mundo, ambito, clave)
+    if datos is None:
+        raise NotFoundError("Esa crónica ya no está guardada.")
+    return datos
