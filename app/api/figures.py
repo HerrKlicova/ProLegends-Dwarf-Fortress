@@ -11,7 +11,7 @@ from .. import db as dbmod
 from ..errors import NotFoundError
 from .common import (
     Conn,
-    color_for,
+    color_de,
     entity_index,
     event_payload,
     get_export,
@@ -67,7 +67,7 @@ def buscar(
         (export_id,),
     )
     for fila in filas:
-        fila["color"] = color_for(fila["race"] or "")
+        fila["color"] = color_de(conn, export_id, fila["race"])
     return {"figuras": filas, "total": total, "razas": razas}
 
 
@@ -84,7 +84,7 @@ def matadores(export_id: int, limite: int = Query(50, le=500), conn: sqlite3.Con
         (export_id, limite),
     )
     for fila in filas:
-        fila["color"] = color_for(fila["race"] or "")
+        fila["color"] = color_de(conn, export_id, fila["race"])
         victimas = dbmod.all_(
             conn,
             """SELECT e.hfid, e.year, v.name, v.race
@@ -234,7 +234,7 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         "nombre": fig["name"],
         "raza": fig["race"],
         "casta": fig["caste"],
-        "color": color_for(fig["race"] or ""),
+        "color": color_de(conn, export_id, fig["race"]),
         "nacimiento": fig["birth_year"],
         "muerte": fig["death_year"],
         "vive": bool(fig["alive"]),

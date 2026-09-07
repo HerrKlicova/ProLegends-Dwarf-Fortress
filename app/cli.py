@@ -61,14 +61,43 @@ def cmd_listar(_: argparse.Namespace) -> int:
 
 
 def cmd_servidor(args: argparse.Namespace) -> int:
+    import threading
+    import time
+    import webbrowser
+
     import uvicorn
 
-    from .main import app  # noqa: F401
+    host = args.host or config.HOST
+    puerto = args.puerto or config.PORT
+    url = f"http://{'127.0.0.1' if host in ('0.0.0.0', '') else host}:{puerto}/"
+
+    if args.abrir:
+        def abrir_cuando_este_listo() -> None:
+            import urllib.error
+            import urllib.request
+
+            for _ in range(90):
+                try:
+                    urllib.request.urlopen(url + "salud", timeout=1)
+                    break
+                except (urllib.error.URLError, OSError):
+                    time.sleep(0.4)
+            webbrowser.open(url)
+
+        threading.Thread(target=abrir_cuando_este_listo, daemon=True).start()
+
+    print()
+    print("=" * 64)
+    print(f"  ProLegends esta funcionando en   {url}")
+    print("  Deja esta ventana abierta mientras uses la aplicacion.")
+    print("  Para cerrarla: pulsa Ctrl+C o cierra esta ventana.")
+    print("=" * 64)
+    print()
 
     uvicorn.run(
         "app.main:app",
-        host=args.host or config.HOST,
-        port=args.puerto or config.PORT,
+        host=host,
+        port=puerto,
         log_level="warning",
         reload=False,
     )
@@ -102,6 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_srv = sub.add_parser("servidor", help="arranca el servidor web")
     p_srv.add_argument("--host")
     p_srv.add_argument("--puerto", type=int)
+    p_srv.add_argument("--abrir", action="store_true", help="abre el navegador solo")
     p_srv.set_defaults(func=cmd_servidor)
 
     p_res = sub.add_parser("reiniciar-bd", help="borra la base de datos generada")

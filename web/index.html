@@ -1,1 +1,145 @@
-<h1>ProLegends</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ProLegends &mdash; Explorador de leyendas de Dwarf Fortress</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>&#9788;</text></svg>">
+</head>
+<body>
+
+<header class="barra">
+  <div class="marca">
+    <span class="sol">&#9788;</span>
+    <div>
+      <h1>ProLegends</h1>
+      <p id="subtitulo">Explorador del archivo de leyendas</p>
+    </div>
+  </div>
+
+  <div class="selectores">
+    <label>Mundo
+      <select id="sel-mundo"></select>
+    </label>
+    <label>Export
+      <select id="sel-export"></select>
+    </label>
+    <button id="btn-importar" class="boton" title="Procesa los ficheros que haya en data/imports/">
+      Importar exports
+    </button>
+  </div>
+</header>
+
+<nav class="pestanyas" id="pestanyas">
+  <button data-vista="mapa" class="activa">Mapa del mundo</button>
+  <button data-vista="figuras">Figuras historicas</button>
+  <button data-vista="fortaleza">Mi fortaleza</button>
+  <button data-vista="cronicas">Cronicas</button>
+</nav>
+
+<div id="aviso-global" class="aviso oculto"></div>
+
+<main>
+  <!-- ============================== MAPA ============================== -->
+  <section id="vista-mapa" class="vista">
+    <aside class="panel-izq">
+      <h2>Capas</h2>
+      <div id="capas" class="capas"></div>
+
+      <h2>Facciones</h2>
+      <div id="leyenda" class="leyenda"></div>
+
+      <h2>Bestias</h2>
+      <label class="capa">
+        <input type="checkbox" id="capa-bestias" checked>
+        <span class="pastilla" style="background:#e0b055"></span>
+        Bestias vivas en el anyo
+      </label>
+      <p class="nota" id="nota-bestias"></p>
+    </aside>
+
+    <div class="lienzo-zona">
+      <div class="tiempo">
+        <button id="btn-play" class="boton pequeno" title="Recorrer los anyos">&#9654;</button>
+        <input type="range" id="anyo" min="0" max="0" value="0">
+        <div class="anyo-valor">Anyo <strong id="anyo-txt">0</strong></div>
+        <button id="btn-fin" class="boton pequeno" title="Ir al presente">Presente</button>
+      </div>
+      <div class="lienzo-caja">
+        <canvas id="lienzo"></canvas>
+        <div id="pista" class="pista oculta"></div>
+      </div>
+      <p class="nota" id="nota-mapa"></p>
+    </div>
+
+    <aside class="panel-der" id="panel-sitio">
+      <p class="vacio">Pincha en un sitio del mapa para ver su ficha.</p>
+    </aside>
+  </section>
+
+  <!-- ============================ FIGURAS ============================= -->
+  <section id="vista-figuras" class="vista oculta">
+    <aside class="panel-izq">
+      <h2>Buscar</h2>
+      <input type="search" id="buscar-figura" placeholder="Nombre de la figura...">
+      <label>Raza
+        <select id="filtro-raza"><option value="">todas</option></select>
+      </label>
+      <label>Estado
+        <select id="filtro-vivas">
+          <option value="">todas</option>
+          <option value="true">vivas</option>
+          <option value="false">muertas</option>
+        </select>
+      </label>
+      <label>Orden
+        <select id="filtro-orden">
+          <option value="nombre">por nombre</option>
+          <option value="muertes">por muertes causadas</option>
+        </select>
+      </label>
+      <button id="btn-matadores" class="boton ancho">Quien mato a quien</button>
+      <div id="lista-figuras" class="lista"></div>
+    </aside>
+    <div class="panel-ancho" id="panel-figura">
+      <p class="vacio">Busca una figura historica y pincha en ella.</p>
+    </div>
+  </section>
+
+  <!-- =========================== FORTALEZA ============================ -->
+  <section id="vista-fortaleza" class="vista oculta">
+    <div class="panel-ancho" id="panel-fortaleza">
+      <p class="vacio">Cargando...</p>
+    </div>
+  </section>
+
+  <!-- ============================ CRONICAS ============================ -->
+  <section id="vista-cronicas" class="vista oculta">
+    <div class="panel-ancho" id="panel-cronicas">
+      <p class="vacio">Cargando...</p>
+    </div>
+  </section>
+</main>
+
+<!-- ventana modal reutilizable -->
+<div id="modal" class="modal oculto">
+  <div class="modal-caja">
+    <h3 id="modal-titulo"></h3>
+    <div id="modal-cuerpo"></div>
+    <div class="modal-botones">
+      <button id="modal-cancelar" class="boton">Cancelar</button>
+      <button id="modal-aceptar" class="boton primario">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/mapa.js"></script>
+<script src="js/figuras.js"></script>
+<script src="js/fortaleza.js"></script>
+<script src="js/cronicas.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

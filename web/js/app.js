@@ -1,0 +1,189 @@
+/* Arranque y coordinacion de vistas. */
+const App = (() => {
+  const el = UI.el;
+  let estado = { mundos: [], mundoId: null, exportId: null, vista: 'mapa', cargadas: new Set() };
+
+  const mundoId = () => estado.mundoId;
+  const exportId = () => estado.exportId;
+
+  function mundoActual() { return estado.mundos.find((m) => m.id === estado.mundoId) || null; }
+  function exportActual() {
+    const m = mundoActual();
+    return (m && m.exports.find((e) => e.id === estado.exportId)) || {};
+  }
+
+  async function inicio() {
+    Mapa.conectar();
+    Figuras.conectar();
+    document.querySelectorAll('#pestanyas button').forEach((b) =>
+      b.addEventListener('click', () => pestanya(b.dataset.vista)));
+    document.getElementById('sel-mundo').addEventListener('change', async (e) => {
+      estado.mundoId = Number(e.target.value);
+      pintarExports();
+      await cambiarExport();
+    });
+    document.getElementById('sel-export').addEventListener('change', async (e) => {
+      estado.exportId = Number(e.target.value);
+      await cambiarExport();
+    });
+    document.getElementById('btn-importar').addEventListener('click', importar);
+    await recargarMundos(true);
+  }
+
+  async function recargarMundos(primeraVez) {
+    let datos;
+    try { datos = await API.mundos(); }
+    catch (e) { UI.fallo(e); return; }
+    estado.mundos = datos.mundos;
+
+    if (datos.fallidos && datos.fallidos.length) {
+      UI.aviso('Algun export no se pudo importar.',
+        datos.fallidos.map((f) => `${f.prefix}: ${f.message || 'motivo desconocido'}`).join(' | '));
+    }
+    if (!estado.mundos.length) {
+      sinDatos();
+      return;
+    }
+    if (!estado.mundos.some((m) => m.id === estado.mundoId)) {
+      estado.mundoId = estado.mundos[0].id;
+      estado.exportId = null;
+    }
+    pintarMundos();
+    pintarExports();
+    await cambiarExport();
+    if (primeraVez) UI.limpiarAviso();
+  }
+
+  function pintarMundos() {
+    const sel = document.getElementById('sel-mundo');
+    UI.poner(sel, ...estado.mundos.map((m) =>
+      el('option', { value: String(m.id), text: m.altnombre ? `${m.nombre} — ${m.altnombre}` : m.nombre })));
+    sel.value = String(estado.mundoId);
+  }
+
+  function pintarExports() {
+    const m = mundoActual();
+    const sel = document.getElementById('sel-export');
+    if (!m) { UI.poner(sel); return; }
+    UI.poner(sel, ...m.exports.map((e) =>
+      el('option', { value: String(e.id), text: `anyo ${e.anyo ?? '?'} — ${e.prefix}` })));
+    if (!m.exports.some((e) => e.id === estado.exportId)) {
+      estado.exportId = m.exports[m.exports.length - 1].id;
+    }
+    sel.value = String(estado.exportId);
+    const e = exportActual();
+    document.getElementById('subtitulo').textContent =
+      `${m.nombre} · mapa de ${e.ancho ?? '?'}x${e.alto ?? '?'} casillas · ` +
+      Object.entries(e.resumen || {}).map(([k, v]) => `${v} ${k}`).join(', ');
+    if (e.aviso) UI.aviso('Aviso del import de este export', e.aviso);
+  }
+
+  async function cambiarExport() {
+    estado.cargadas = new Set();
+    try {
+      await Mapa.cargar(estado.exportId);
+      estado.cargadas.add('mapa');
+    } catch (e) { UI.fallo(e); }
+    await asegurarVista(estado.vista);
+  }
+
+  async function asegurarVista(vista) {
+    if (estado.cargadas.has(vista)) return;
+    try {
+      if (vista === 'figuras') await Figuras.inicializar();
+      else if (vista === 'fortaleza') await Fortaleza.cargar();
+      else if (vista === 'cronicas') await Cronicas.cargar();
+      estado.cargadas.add(vista);
+    } catch (e) { UI.fallo(e); }
+  }
+
+  function pestanya(vista) {
+    estado.vista = vista;
+    document.querySelectorAll('#pestanyas button').forEach((b) =>
+      b.classList.toggle('activa', b.dataset.vista === vista));
+    document.querySelectorAll('main .vista').forEach((s) =>
+      s.classList.toggle('oculta', s.id !== 'vista-' + vista));
+    if (vista === 'mapa') Mapa.redibujar();
+    asegurarVista(vista);
+  }
+
+  async function irAFigura(hfId) {
+    pestanya('figuras');
+    await asegurarVista('figuras');
+    Figuras.abrir(hfId);
+  }
+
+  function verEntidad(entityId) { Figuras.verEntidad(entityId); }
+
+  async function verSitio(siteId) {
+    pestanya('mapa');
+    await Mapa.abrirSitio(siteId);
+  }
+
+  /* -------------------------------------------------------- importacion */
+  async function importar() {
+    let pendientes;
+    try { pendientes = await API.pendientes(); }
+    catch (e) { UI.fallo(e); return; }
+
+    const cuerpo = [
+      el('p', { text: `Carpeta vigilada: ${pendientes.carpeta}` }),
+      pendientes.exports.length
+        ? UI.tabla(['Export', 'Ficheros', 'Tamano', 'Estado'], pendientes.exports.map((p) => [
+            p.prefix,
+            [p.principal, p.plus].filter(Boolean).join(' + ') || '—',
+            `${p.tamano_mb} MB`,
+            p.importado ? 'ya importado' : (p.completo ? 'pendiente' : 'pendiente (sin _plus)'),
+          ]))
+        : el('p', { class: 'nota', text: 'No hay ningun export en esa carpeta. Copia ahi los ficheros que genera Dwarf Fortress.' }),
+      (pendientes.avisos || []).length
+        ? el('pre', { class: 'consola', text: pendientes.avisos.join('\n') }) : null,
+      el('p', { class: 'nota', text: 'Los exports ya importados se saltan solos. Un fichero de 45 MB puede tardar un par de minutos.' }),
+    ];
+    const ok = await UI.confirmar('Importar exports', cuerpo, 'Importar ahora');
+    if (!ok) return;
+
+    try { await API.importar(null); } catch (e) { UI.fallo(e); return; }
+    UI.aviso('Importando... el detalle se ve en la ventana negra de start.bat.', '');
+    seguirImportacion();
+  }
+
+  function seguirImportacion() {
+    const tic = setInterval(async () => {
+      let estadoImp;
+      try { estadoImp = await API.estadoImport(); } catch (e) { clearInterval(tic); return; }
+      if (estadoImp.activo) {
+        const ultima = (estadoImp.lineas || []).slice(-1)[0] || 'procesando...';
+        UI.aviso('Importando exports...', ultima);
+        return;
+      }
+      clearInterval(tic);
+      if (estadoImp.error) { UI.aviso('La importacion ha fallado.', estadoImp.error); return; }
+      const r = estadoImp.resultado || {};
+      const partes = [];
+      if ((r.importados || []).length) partes.push(`${r.importados.length} importados`);
+      if ((r.omitidos || []).length) partes.push(`${r.omitidos.length} ya estaban`);
+      if ((r.errores || []).length) partes.push(`${r.errores.length} con error`);
+      UI.aviso('Importacion terminada.',
+        partes.join(', ') + ((r.errores || []).length
+          ? ' — ' + r.errores.map((x) => `${x.prefix}: ${x.error}`).join(' | ') : ''),
+        (r.errores || []).length ? '' : 'ok');
+      await recargarMundos(false);
+    }, 1200);
+  }
+
+  function sinDatos() {
+    UI.poner(document.getElementById('sel-mundo'), el('option', { text: 'sin mundos' }));
+    UI.poner(document.getElementById('sel-export'), el('option', { text: '—' }));
+    document.getElementById('subtitulo').textContent = 'Todavia no hay ningun mundo importado';
+    UI.aviso('No hay ningun mundo importado.',
+      'Copia los ficheros -legends.xml y -legends_plus.xml en la carpeta data/imports/ y pulsa "Importar exports".');
+    UI.poner(document.getElementById('panel-sitio'),
+      el('p', { class: 'vacio', text: 'Sin datos.' }));
+  }
+
+  return { inicio, pestanya, mundoId, exportId, exportActual, mundoActual,
+           irAFigura, verEntidad, verSitio, recargarMundos };
+})();
+
+window.addEventListener('DOMContentLoaded', App.inicio);

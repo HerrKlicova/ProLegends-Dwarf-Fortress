@@ -26,6 +26,65 @@ def get_conn():
 Conn = Depends(get_conn)
 
 
+# Paleta por export, calculada una vez y reutilizada.
+_PALETAS: dict[int, dict[str, str]] = {}
+
+
+def _hsl(tono: float, saturacion: float, luz: float) -> str:
+    r, g, b = colorsys.hls_to_rgb(tono % 1.0, luz, saturacion)
+    return "#%02x%02x%02x" % (int(r * 255), int(g * 255), int(b * 255))
+
+
+def spread_palette(claves) -> dict[str, str]:
+    """Reparte los tonos del circulo cromatico entre las claves que haya.
+
+    Los colores salen de los propios datos (la lista de razas del mundo), no de
+    ninguna tabla fija, pero quedan bien separados entre si en lugar de caer al
+    azar en la misma zona del espectro.
+    """
+    ordenadas = sorted({c for c in claves if c})
+    total = len(ordenadas) or 1
+    salida: dict[str, str] = {}
+    for i, clave in enumerate(ordenadas):
+        digest = hashlib.md5(clave.encode("utf-8")).digest()
+        tono = (i / total) + 0.045  # desplazamiento para evitar el rojo puro
+        saturacion = 0.50 + (digest[0] / 255.0) * 0.26
+        luz = 0.50 + (digest[1] / 255.0) * 0.14
+        salida[clave] = _hsl(tono, saturacion, luz)
+    return salida
+
+
+def race_palette(conn: sqlite3.Connection, export_id: int) -> dict[str, str]:
+    if export_id in _PALETAS:
+        return _PALETAS[export_id]
+    razas = [
+        r[0] for r in conn.execute(
+            """SELECT DISTINCT race FROM entities
+                WHERE export_id = ? AND race IS NOT NULL AND race <> ''""",
+            (export_id,),
+        )
+    ]
+    razas += [
+        r[0] for r in conn.execute(
+            """SELECT DISTINCT race FROM historical_figures
+                WHERE export_id = ? AND race IS NOT NULL AND race <> ''""",
+            (export_id,),
+        )
+    ]
+    paleta = spread_palette(razas)
+    _PALETAS[export_id] = paleta
+    return paleta
+
+
+def color_de(conn: sqlite3.Connection, export_id: int, raza, alternativa="") -> str:
+    """Color de una raza; si no hay raza, uno estable derivado del nombre."""
+    if raza:
+        paleta = race_palette(conn, export_id)
+        if raza in paleta:
+            return paleta[raza]
+    return color_for(raza or alternativa)
+
+
 def color_for(clave: str) -> str:
     """Color estable deducido del propio dato (nombre de raza o de faccion).
 
@@ -98,7 +157,7 @@ def entity_index(conn: sqlite3.Connection, export_id: int) -> dict[int, dict]:
              FROM entities WHERE export_id = ?""",
         (export_id,),
     ):
-        row["color"] = color_for(row["race"] or row["name"] or str(row["entity_id"]))
+        row["color"] = color_de(conn, export_id, row["race"], row["name"] or str(row["entity_id"]))
         salida[row["entity_id"]] = row
     return salida
 

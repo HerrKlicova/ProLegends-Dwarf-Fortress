@@ -12,6 +12,7 @@ from ..errors import NotFoundError
 from ..parser import legends as L
 from .common import (
     Conn,
+    color_de,
     color_for,
     entity_index,
     event_payload,
@@ -113,7 +114,7 @@ def _razas(conn: sqlite3.Connection, export_id: int) -> list[dict]:
             GROUP BY race ORDER BY n DESC""",
         (export_id,),
     )
-    return [{"raza": f["race"], "entidades": f["n"], "color": color_for(f["race"])} for f in filas]
+    return [{"raza": f["race"], "entidades": f["n"], "color": color_de(conn, export_id, f["race"])} for f in filas]
 
 
 def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
@@ -170,7 +171,7 @@ def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
                 "muerte": fig["death_year"],
                 "vive": bool(fig["alive"]),
                 "posiciones": pistas,
-                "color": color_for(fig["race"] or fig["associated_type"] or ""),
+                "color": color_de(conn, export_id, fig["race"], fig["associated_type"] or ""),
             }
         )
     return salida
@@ -298,7 +299,7 @@ def listar_entidades(
     params.append(limite)
     filas = dbmod.all_(conn, " ".join(sql), tuple(params))
     for fila in filas:
-        fila["color"] = color_for(fila["race"] or fila["name"] or "")
+        fila["color"] = color_de(conn, export_id, fila["race"], fila["name"] or "")
     return {"entidades": filas}
 
 
@@ -366,7 +367,7 @@ def ficha_entidad(export_id: int, entity_id: int, conn: sqlite3.Connection = Con
         "nombre": ent["name"],
         "tipo": ent["type"],
         "raza": ent["race"],
-        "color": color_for(ent["race"] or ent["name"] or ""),
+        "color": color_de(conn, export_id, ent["race"], ent["name"] or ""),
         "padre": {"id": padre["entity_id"], "nombre": padre["name"]} if padre else None,
         "raiz": {"id": raiz["entity_id"], "nombre": raiz["name"]} if raiz else None,
         "hijos": hijos,
