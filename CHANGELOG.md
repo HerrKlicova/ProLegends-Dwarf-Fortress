@@ -10,6 +10,52 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.3.0 — La aplicación va a buscar los exports al juego
+
+*Función nueva.*
+
+Hasta ahora había que ir a la carpeta de Dwarf Fortress, buscar los dos XML
+entre las DLL del juego y arrastrarlos a `data/imports/`. Ya no.
+
+**Añadido**
+
+- **ProLegends encuentra sola dónde tienes instalado Dwarf Fortress.** Mira el
+  registro de Steam, sus bibliotecas de otros discos (`libraryfolders.vdf`) y
+  los sitios habituales fuera de Steam. No rastrea el disco entero: solo mira
+  donde tiene sentido, así que tarda un instante.
+- **Botón para elegir la carpeta a mano**, que abre el diálogo de carpetas de
+  Windows de toda la vida, por si la detección falla o tienes el juego en un
+  sitio raro. También se puede pegar la ruta directamente.
+- **Listado de los exports que hay en la carpeta del juego**, con el nombre del
+  mundo, el año de la partida, el tamaño y si ya lo tienes o no. Marcas los que
+  quieras y se traen solos.
+- **Se copian, no se mueven**: tus ficheros siguen intactos en la carpeta del
+  juego. Si algo falla a mitad, se deshace lo copiado de ese export.
+- **La carpeta se recuerda**, así que esto se configura una sola vez. Se guarda
+  en `data/ajustes.json`, que no sube al repositorio porque solo vale para tu
+  ordenador.
+- La ventana de **Importar exports** se ha partido en dos partes claras:
+  *Desde Dwarf Fortress* (de dónde salen los ficheros) y *En data/imports* (qué
+  hay ya esperando a procesarse). Al traer un export, la segunda parte se
+  actualiza sola.
+- Nuevo comando de terminal, por si prefieres eso:
+
+  ```
+  python -m app.cli juego            busca el juego y enseña qué exports tiene
+  python -m app.cli juego --traer    los copia a data/imports/
+  python -m app.cli juego --carpeta "D:/Steam/steamapps/common/Dwarf Fortress"
+  ```
+
+- De paso se localizan las imágenes de mapa (`.bmp`) que el juego deje ahí. Aún
+  no se usan; hará falta saberlo para el mapa nuevo.
+
+**Sigue funcionando igual que antes**
+
+Si prefieres copiar los ficheros a mano a `data/imports/`, todo va exactamente
+como iba. Esto es un atajo, no un cambio de forma de trabajar.
+
+---
+
 ## v1.2.1 — Los nombres con acentos dejan de salir rotos
 
 *Arreglo.*

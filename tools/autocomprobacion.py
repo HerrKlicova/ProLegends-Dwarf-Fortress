@@ -398,6 +398,71 @@ def main() -> int:
         comprobar(detectar_codificacion(mentiroso) == "utf-8",
                   "si declara CP437 pero es UTF-8, se hace caso al contenido, no a la declaración")
 
+        print("\n15. La carpeta de Dwarf Fortress")
+        from app import ajustes as ajustesmod, config as cfg, juego as juegomod  # noqa: E402
+
+        # Se imita la carpeta real del juego: el ejecutable y los XML sueltos
+        # al lado, que es donde DF los deja al exportar.
+        carpeta_df = tmp / "Dwarf Fortress"
+        carpeta_df.mkdir()
+        (carpeta_df / juegomod.EJECUTABLE).write_bytes(b"MZ falso")
+        (carpeta_df / "world_map.bmp").write_bytes(b"BM falso")
+        generar(carpeta_df, "--mundo", "Ruspsmaksmo", "--token", "region1",
+                "--solo-uno", "--anyo-final", "103")
+
+        comprobar(juegomod.es_carpeta_df(carpeta_df),
+                  "se reconoce la carpeta del juego por su ejecutable")
+        cualquiera = tmp / "cualquiera"
+        cualquiera.mkdir()
+        (cualquiera / "notas.txt").write_text("nada que ver", encoding="utf-8")
+        comprobar(not juegomod.es_carpeta_df(cualquiera),
+                  "una carpeta cualquiera no se confunde con la del juego")
+        # A propósito se acepta también una carpeta sin ejecutable pero con
+        # exports dentro: hay quien se los guarda aparte o no usa Steam.
+        comprobar(juegomod.es_carpeta_df(tmp / "acentos"),
+                  "y se acepta una carpeta que solo tenga exports de leyendas")
+
+        destino_falso = tmp / "imports-juego"
+        destino_falso.mkdir()
+        datos_reales, imports_reales = cfg.DATA_DIR, cfg.IMPORTS_DIR
+        cfg.DATA_DIR, cfg.IMPORTS_DIR = tmp, destino_falso
+        try:
+            hallados = juegomod.exports_en(carpeta_df)
+            comprobar(len(hallados) == 1 and hallados[0]["completo"],
+                      "encuentra el export completo (principal + _plus) en la carpeta del juego")
+            comprobar(hallados[0]["mundo"] == "Ruspsmaksmo",
+                      f"y le saca el nombre del mundo: {hallados[0]['mundo']!r}")
+            comprobar((hallados[0]["anyo"], hallados[0]["mes"], hallados[0]["dia"]) == (103, 7, 24),
+                      "y la fecha de la partida")
+            comprobar(not hallados[0]["ya_en_imports"],
+                      "y sabe que todavía no está en data/imports")
+            comprobar(juegomod.mapas_en(carpeta_df) == ["world_map.bmp"],
+                      "localiza también las imágenes de mapa que deje el juego")
+
+            resultado = juegomod.traer(carpeta_df, [hallados[0]["prefijo"]], log=lambda m: None)
+            comprobar(resultado["traidos"] == [hallados[0]["prefijo"]] and not resultado["fallos"],
+                      "trae el export a data/imports sin errores")
+            comprobar(len(list(destino_falso.glob("*.xml"))) == 2,
+                      "llegan los dos ficheros, no solo uno")
+            comprobar(len(list(carpeta_df.glob("*.xml"))) == 2,
+                      "y los originales siguen en la carpeta del juego (se copia, no se mueve)")
+            comprobar(juegomod.exports_en(carpeta_df)[0]["ya_en_imports"],
+                      "a la segunda ya sabe que ese export lo tienes")
+
+            pares_traidos, _ = discover(destino_falso)
+            comprobar(len(pares_traidos) == 1 and pares_traidos[0].complete,
+                      "y lo traído es un par válido, listo para importar")
+
+            juegomod.recordar(carpeta_df)
+            comprobar(juegomod.carpeta_recordada() == carpeta_df,
+                      "la carpeta se recuerda entre arranques")
+            comprobar(ajustesmod.ruta().exists() and "carpeta_df" in ajustesmod.leer(),
+                      "guardada en data/ajustes.json, fuera de la base de datos")
+            juegomod.olvidar()
+            comprobar(juegomod.carpeta_recordada() is None, "y se puede olvidar")
+        finally:
+            cfg.DATA_DIR, cfg.IMPORTS_DIR = datos_reales, imports_reales
+
         conn.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

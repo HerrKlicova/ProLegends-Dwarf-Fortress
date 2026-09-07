@@ -60,17 +60,11 @@ Los XML de `data/imports/` puedes copiarlos también, o volver a dejarlos ahí.
 
 ## Cómo se usa (Windows)
 
-1. Copia en la carpeta `data/imports/` los ficheros que genera Dwarf Fortress al
-   exportar las leyendas. Son dos por export:
+1. **Doble clic en `start.bat`.**
 
-   ```
-   region1-00101-07-24-legends.xml         (el principal, unos 45 MB)
-   region1-00101-07-24-legends_plus.xml    (el extra de DFHack, unos 13 MB)
-   ```
-
-   Da igual cómo se llamen: la aplicación los ordena sola (ver abajo).
-
-2. **Doble clic en `start.bat`.**
+2. Pulsa **Importar exports** y, en *Desde Dwarf Fortress*, pulsa
+   **Buscar Dwarf Fortress**. La aplicación encuentra el juego, te enseña los
+   exports que tienes dentro y se los trae ella misma.
 
 Eso es todo. La primera vez tarda un poco porque prepara el entorno de Python.
 Después: ordena los ficheros, importa los exports nuevos (con barra de
@@ -81,6 +75,35 @@ o pulsa `Ctrl+C`.
 
 En macOS el equivalente es `start.command` (doble clic) y en Linux
 `./start.sh`.
+
+### Traer los exports desde el juego
+
+Al exportar las leyendas, Dwarf Fortress **deja los dos XML junto a su
+ejecutable**, mezclados con las DLL:
+
+```
+D:\Steam\steamapps\common\Dwarf Fortress\
+├── Dwarf Fortress.exe
+├── region1-00103-10-15-legends.xml         (el principal, unos 45 MB)
+└── region1-00103-10-15-legends_plus.xml    (el extra de DFHack, unos 13 MB)
+```
+
+En la ventana de **Importar exports**, el apartado *Desde Dwarf Fortress* se
+encarga de todo:
+
+- **Buscar Dwarf Fortress** mira el registro de Steam, sus bibliotecas de otros
+  discos y los sitios habituales fuera de Steam. No rastrea el disco entero.
+- Si no lo encuentra, **Elegir la carpeta a mano** abre el diálogo de carpetas
+  de Windows. También puedes pegar la ruta en la casilla.
+- Verás la lista de exports con su mundo, su año y su tamaño. Marcas los que
+  quieras y **Traer los marcados** los copia a `data/imports/`.
+- **Se copian, no se mueven**: los originales siguen en la carpeta del juego.
+- La carpeta se recuerda, así que esto se hace una sola vez. Queda apuntada en
+  `data/ajustes.json`, que no sube a GitHub porque solo vale para tu ordenador.
+
+**Si prefieres hacerlo a mano**, sigue funcionando igual que siempre: copia los
+dos ficheros a `data/imports/` y pulsa **Importar exports**. Da igual cómo se
+llamen; la aplicación los ordena sola (ver abajo).
 
 ### Recuperar el proyecto en otro ordenador
 
@@ -213,7 +236,7 @@ Los XML de legends tienen varias trampas. Están todas contempladas:
 
 | Problema | Solución |
 |---|---|
-| El XML viene en **CP437**, no en UTF-8 | Se decodifica como cp437 y se reentrega en UTF-8, reescribiendo la declaración del XML |
+| Unos exports vienen en **CP437** y otros en **UTF-8** | Se mira el contenido de los primeros bytes para saber cuál es, sin fiarse de lo que el fichero declare, y todo se reentrega en UTF-8 |
 | **Bytes de control C0** dentro de los nombres | Se traducen a su símbolo real de CP437 (el `0x0F` es el ☼ de los objetos de calidad), en vez de borrarlos y perder el nombre |
 | 45 MB no caben con `ET.parse()` | `iterparse` en streaming, liberando cada registro procesado: la memoria se mantiene plana |
 | Unos exports usan `<name>` y otros `<n>` | Se aceptan las dos |
@@ -245,12 +268,15 @@ app/
     fortress.py    detección, resumen, diff y avisos de tu fortaleza
   api/         endpoints HTTP              (la interfaz solo habla con esto)
   ai/          crónicas narradas
+  juego.py     encuentra la carpeta de Dwarf Fortress y trae sus exports
+  ajustes.py   lo que la aplicación recuerda entre arranques
   schema.sql   esquema de la base de datos
 web/           interfaz: HTML, CSS y JavaScript a pelo, sin compilar nada
 data/
   imports/     tus XML (no van al repositorio)
   db/          la base de datos generada (no va al repositorio)
   cronicas/    las crónicas de IA, un fichero de texto por crónica
+  ajustes.json dónde tienes el juego y demás (solo vale en tu ordenador)
 tools/         utilidades sueltas
 ```
 
@@ -294,6 +320,8 @@ tamaño del mundo ya están en `exports`).
 No hacen falta para el uso normal, pero están:
 
 ```
+python -m app.cli juego           busca Dwarf Fortress y enseña sus exports
+python -m app.cli juego --traer   copia a data/imports/ los que falten
 python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
 python -m app.cli ordenar         renombra y ordena los XML de data/imports/
 python -m app.cli importar        procesa data/imports/ y vuelca a SQLite

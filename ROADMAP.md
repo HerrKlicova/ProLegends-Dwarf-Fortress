@@ -53,7 +53,7 @@ los tres caminos del mapa tomamos.
 
 ---
 
-## v1.3.0 — Conexión con Dwarf Fortress
+## v1.3.0 — Conexión con Dwarf Fortress ✅ HECHO
 
 > Que no tengas que ir a buscar ficheros a mano nunca más.
 
@@ -82,14 +82,12 @@ pero es de andar por casa.
 - **De paso se localizan los `.bmp`** que DF exporta junto a las leyendas. No se
   usan todavía, pero quedan fichados para el mapa.
 
-**Qué hay que decidir contigo.** Si la detección encuentra varias instalaciones
-de DF, ¿elegimos la más reciente o preguntamos siempre?
-
-**Riesgos.** El diálogo nativo necesita `tkinter`, que viene con Python en
-Windows pero podría faltar en instalaciones raras; habrá que comprobarlo y dejar
-el campo de texto como alternativa.
-
-**Tamaño.** Pequeño-medio. Una sesión.
+**Cómo quedó.** Si la búsqueda encuentra una sola instalación con exports
+dentro, se usa esa sin preguntar; si hay varias, se listan y eliges. El diálogo
+nativo se lanza en un proceso aparte (tkinter y un servidor web en el mismo
+proceso se llevan mal), y si falla o falta, el campo para pegar la ruta sigue
+ahí. La opción de mover en vez de copiar existe en la API pero no se ofrece en
+la interfaz: mover ficheros de la carpeta de otro programa no compensa.
 
 ---
 
