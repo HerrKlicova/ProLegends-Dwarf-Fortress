@@ -95,10 +95,19 @@ def comparar(
             "exports": [{"id": e["id"], "prefix": e["prefix"], "anyo": e["game_year"]} for e in exports],
         }
     ids = [e["id"] for e in exports]
-    hasta = hasta or ids[-1]
-    desde = desde or ids[ids.index(hasta) - 1] if hasta in ids else ids[-2]
-    if desde not in ids or hasta not in ids:
-        raise NotFoundError("Alguno de los exports indicados no pertenece a este mundo.")
+    if hasta is None:
+        hasta = ids[-1]
+    if hasta not in ids:
+        raise NotFoundError("El export indicado no pertenece a este mundo.")
+    if desde is None:
+        posicion = ids.index(hasta)
+        # El anterior al elegido; si el elegido es el primero, se compara con el
+        # siguiente, que es lo unico que tiene sentido.
+        desde = ids[posicion - 1] if posicion > 0 else ids[1]
+    if desde not in ids:
+        raise NotFoundError("El export de partida no pertenece a este mundo.")
+    if desde == hasta:
+        raise ProLegendsError("Hay que comparar dos exports distintos.")
 
     eleccion = F.resolve(conn, world_id)
     resultado = F.diff(conn, desde, hasta, eleccion["site_id"], radio)

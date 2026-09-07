@@ -167,6 +167,21 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
     for rel in relaciones:
         rel["nombre"] = nombres.get(rel["hf_id"])
 
+    # Las deidades son un vinculo propio del XML (link_type = deity / worship),
+    # distinto de las esferas, que son atributos de la propia figura.
+    def _es_deidad(tipo: str) -> bool:
+        t = (tipo or "").lower()
+        return "deity" in t or "god" in t or "worship" in t
+
+    deidades = [r for r in relaciones if _es_deidad(r["vinculo"])]
+    relaciones = [r for r in relaciones if not _es_deidad(r["vinculo"])]
+    for pert in pertenencias:
+        if _es_deidad(pert["vinculo"] or ""):
+            deidades.append(
+                {"hf_id": None, "entidad_id": pert["entidad_id"],
+                 "nombre": pert["entidad"], "vinculo": pert["vinculo"]}
+            )
+
     habilidades = dbmod.all_(
         conn,
         """SELECT skill, total_ip FROM hf_skills WHERE export_id = ? AND hf_id = ?
@@ -271,6 +286,7 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         "pertenencias": pertenencias,
         "relaciones": relaciones,
         "habilidades": habilidades,
+        "deidades": deidades,
         "esferas": rasgos.get("sphere", []),
         "objetivos": rasgos.get("goal", []),
         "secretos": rasgos.get("secreto", []),

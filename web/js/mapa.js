@@ -20,6 +20,8 @@ const Mapa = (() => {
   let verBestias = true;
   let historia = new Map();     // site_id -> [[anyo, propietario, estado], ...]
   let colorFaccion = new Map(); // entity_id -> color de su civilizacion raiz
+  let raizDe = new Map();       // entity_id -> id de su civilizacion raiz
+  let faccionPorId = new Map(); // entity_id -> faccion
   let posiciones = [];          // cache de lo dibujado, para el raton
   let reproduciendo = null;
   let seleccionado = null;
@@ -35,11 +37,15 @@ const Mapa = (() => {
     }
     for (const lista of historia.values()) lista.sort((a, b) => a[0] - b[0]);
 
-    const porId = new Map(datos.facciones.map((f) => [f.id, f]));
+    // Indices previos: dentro del bucle de dibujado no puede haber busquedas
+    // lineales, o con un mundo de miles de sitios el deslizador se arrastra.
+    faccionPorId = new Map(datos.facciones.map((f) => [f.id, f]));
     colorFaccion = new Map();
+    raizDe = new Map();
     for (const f of datos.facciones) {
-      const raiz = porId.get(f.raiz);
+      const raiz = faccionPorId.get(f.raiz);
       colorFaccion.set(f.id, (raiz || f).color);
+      raizDe.set(f.id, f.raiz);
     }
 
     const min = datos.export.anyo_min ?? 0;
@@ -231,9 +237,9 @@ const Mapa = (() => {
   }
 
   function faccionRaizDe(entityId) {
-    if (entityId === null || entityId === undefined || !datos) return null;
-    const f = datos.facciones.find((x) => x.id === entityId);
-    return f ? f.raiz : null;
+    if (entityId === null || entityId === undefined) return null;
+    const raiz = raizDe.get(entityId);
+    return raiz === undefined ? null : raiz;
   }
 
   const capaColor = (capa) => (CAPAS.find((c) => c.id === capa) || {}).color || '#8a8f98';
@@ -293,7 +299,7 @@ const Mapa = (() => {
     } else {
       const s = objetivo.sitio;
       const est = objetivo.estado;
-      const f = datos.facciones.find((x) => x.id === est.owner);
+      const f = faccionPorId.get(est.owner);
       pista.innerHTML = `<b>${escapar(s.nombre || 'sin nombre')}</b><br>` +
         `${escapar(s.tipo || '')} · (${s.x},${s.y})<br>` +
         (est.estado === 'ruinas'

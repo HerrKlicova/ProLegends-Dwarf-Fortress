@@ -116,7 +116,15 @@ const Figuras = (() => {
           onclick: () => App.verSitio(s.site_id),
         })))) : null,
 
-      listaChips('Deidades y esferas', f.esferas),
+      f.deidades && f.deidades.length ? UI.bloque('Deidades',
+        el('div', { class: 'chips' }, f.deidades.map((d) => el('span', {
+          class: 'chip enlace',
+          text: `${d.nombre || 'sin nombre'}${d.vinculo ? ' · ' + d.vinculo : ''}`,
+          onclick: () => (d.hf_id !== null && d.hf_id !== undefined)
+            ? abrir(d.hf_id) : verEntidad(d.entidad_id),
+        })))) : null,
+
+      listaChips('Esferas', f.esferas),
       listaChips('Objetivos vitales', f.objetivos),
       listaChips('Secretos conocidos', f.secretos),
       listaChips('Interacciones', f.interacciones),
