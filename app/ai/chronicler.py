@@ -54,9 +54,18 @@ def cacheada(conn: sqlite3.Connection, world_id: int, ambito: dict) -> Optional[
 
 def disponible() -> tuple[bool, str]:
     if not config.ANTHROPIC_API_KEY:
+        env = config.BASE_DIR / ".env"
+        if env.exists():
+            return False, (
+                f"Falta tu clave. Abre este fichero con el Bloc de notas: {env} — "
+                "busca la línea que pone ANTHROPIC_API_KEY= y pega la clave justo "
+                "detrás del igual, sin espacios ni comillas. Guarda y vuelve a "
+                "arrancar start.bat."
+            )
         return False, (
-            "Falta la clave de la API. Copia el fichero .env.example a .env y pon ahí "
-            "tu ANTHROPIC_API_KEY."
+            f"No existe el fichero de configuración. Debería estar en {env}. "
+            "Vuelve a arrancar start.bat y se creará solo; después ábrelo con el "
+            "Bloc de notas y pon ahí tu clave."
         )
     try:
         import anthropic  # noqa: F401

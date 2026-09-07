@@ -10,6 +10,25 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.1.2 — Poner la clave de la API se explica sola
+
+*Arreglos.*
+
+Al ir a poner la clave de Anthropic no quedaba claro cuál de los dos ficheros
+había que tocar ni dónde escribirla.
+
+**Arreglado**
+
+- Cuando falta la clave, el aviso dice ahora **la ruta completa del fichero**
+  que hay que abrir y qué línea rellenar, en vez de "copia .env.example a .env".
+  Y distingue dos casos: que el fichero no exista todavía, o que exista pero
+  esté sin rellenar.
+- `.env.example` explica en su primera línea que **es solo un ejemplo y no se
+  edita**, que el fichero bueno es la copia llamada `.env`, y enseña cómo queda
+  la línea de la clave una vez rellenada. Además ya lleva tildes.
+
+---
+
 ## v1.1.1 — Ordenación con exports reales, y tildes
 
 *Arreglos.*
