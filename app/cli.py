@@ -1,5 +1,6 @@
 """Linea de comandos de ProLegends.
 
+    python -m app.cli juego           busca Dwarf Fortress y trae sus exports
     python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
     python -m app.cli ordenar         renombra y ordena los XML de data/imports/
     python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
@@ -97,6 +98,65 @@ def cmd_ordenar(args: argparse.Namespace) -> int:
         for fallo in resultado["fallos"]:
             print(f"  [ERROR] {fallo}")
         return 1 if resultado["fallos"] else 0
+
+
+def cmd_juego(args: argparse.Namespace) -> int:
+    """Busca la carpeta de Dwarf Fortress y, si se pide, trae sus exports."""
+    from . import juego as juegomod
+
+    if args.olvidar:
+        juegomod.olvidar()
+        print("Olvidada la carpeta de Dwarf Fortress.")
+        return 0
+
+    carpeta = None
+    if args.carpeta:
+        carpeta = Path(args.carpeta)
+        if not juegomod.es_carpeta_df(carpeta):
+            print(f"En {carpeta} no se ve ni '{juegomod.EJECUTABLE}' ni ningún -legends.xml.")
+            return 2
+        juegomod.recordar(carpeta)
+        print(f"Apuntada la carpeta: {carpeta}")
+    else:
+        carpeta = juegomod.carpeta_recordada()
+        if carpeta is None:
+            print("Buscando Dwarf Fortress...")
+            halladas = juegomod.buscar()
+            if not halladas:
+                print("  No se ha encontrado ninguna instalación.")
+                print("  Dila tú:  python -m app.cli juego --carpeta \"D:/Steam/steamapps/common/Dwarf Fortress\"")
+                return 1
+            for hallada in halladas:
+                print(f"  - {hallada['ruta']}   ({hallada['exports']} export(s))")
+            carpeta = Path(halladas[0]["ruta"])
+            juegomod.recordar(carpeta)
+            print(f"\n  Se usa la primera: {carpeta}")
+
+    exports = juegomod.exports_en(carpeta)
+    print(f"\nExports de leyendas en {carpeta}:")
+    if not exports:
+        print("  (ninguno)")
+        return 0
+    for exp in exports:
+        estado = "ya la tienes" if exp["ya_en_imports"] else "sin traer"
+        falta = "" if exp["completo"] else "  [falta el _plus]"
+        print(f"  - {exp['prefijo']:<28} {exp['mundo'] or '?':<24} "
+              f"{exp['tamano_mb']:>6.1f} MB  {estado}{falta}")
+
+    if not args.traer:
+        print("\n  Para traerlos a data/imports/:  python -m app.cli juego --traer")
+        return 0
+
+    pendientes = [e["prefijo"] for e in exports if not e["ya_en_imports"]]
+    if not pendientes:
+        print("\n  Ya están todos en data/imports/.")
+        return 0
+    print()
+    resultado = juegomod.traer(carpeta, pendientes, mover=False, log=print)
+    print(f"\n  Traídos: {len(resultado['traidos'])}")
+    for fallo in resultado["fallos"]:
+        print(f"  [ERROR] {fallo}")
+    return 1 if resultado["fallos"] else 0
 
 
 def cmd_diagnostico(_: argparse.Namespace) -> int:
@@ -276,6 +336,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_ord.add_argument("--sin-carpetas", action="store_true", dest="sin_carpetas",
                        help="renombrar pero dejarlo todo en data/imports/")
     p_ord.set_defaults(func=cmd_ordenar)
+
+    p_juego = sub.add_parser(
+        "juego", help="busca la carpeta de Dwarf Fortress y trae sus exports"
+    )
+    p_juego.add_argument("--carpeta", help="decirle tú dónde está en vez de buscarla")
+    p_juego.add_argument("--traer", action="store_true",
+                         help="copiar a data/imports/ los exports que falten")
+    p_juego.add_argument("--olvidar", action="store_true",
+                         help="olvidar la carpeta guardada")
+    p_juego.set_defaults(func=cmd_juego)
 
     p_diag = sub.add_parser(
         "diagnostico", help="dice qué ve la aplicación en cada fichero de data/imports/"
