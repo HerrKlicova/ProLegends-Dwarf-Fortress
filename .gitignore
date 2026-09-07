@@ -18,11 +18,10 @@ __pycache__/
 .mypy_cache/
 
 # --- Crónicas generadas por IA ---
-# NO se ignoran a propósito: son lo único que cuesta dinero y no se puede
-# regenerar gratis, así que si algún día subes la carpeta quedan respaldadas.
-# Si prefieres que no salgan de tu ordenador, quita la almohadilla de la
-# línea siguiente.
-# data/cronicas/
+# No se suben: son tuyas y hablan de tus partidas. Viven en tu ordenador, en
+# data/cronicas/, y ahí no las borra nada. Si algún día quieres respaldarlas en
+# GitHub, se pueden añadir a mano con 'git add -f data/cronicas'.
+data/cronicas/
 
 # --- Base de datos generada (se regenera importando) ---
 *.db
