@@ -78,9 +78,21 @@ def disponible() -> tuple[bool, str]:
                 "el Bloc de notas, y al guardar elige la codificación UTF-8."
             )
         if estado["linea_presente"]:
+            # El tamaño y la fecha son la clave para distinguir dos cosas que se
+            # confunden mucho: que el editor no haya guardado todavía, o que se
+            # esté editando el .env de otra carpeta.
+            sello = ""
+            if estado["tamano"] is not None:
+                sello = (
+                    f" El fichero que he leído ocupa {estado['tamano']} caracteres y se "
+                    f"guardó por última vez el {estado['modificado']}. Si tu editor te "
+                    "dice que tiene más caracteres que eso, es que los cambios no están "
+                    "guardados todavía: vuelve a él y pulsa Ctrl+S. Y comprueba que el "
+                    "fichero que tienes abierto es justo ese y no el de otra carpeta."
+                )
             return False, (
                 f"En {ruta} está la línea ANTHROPIC_API_KEY= pero sin nada detrás. "
-                "Pega ahí la clave, justo después del igual, y guarda con Ctrl+S. "
+                f"Pega ahí la clave, justo después del igual, y guarda con Ctrl+S.{sello} "
                 "No hace falta reiniciar: recarga la página y ya."
             )
         return False, (

@@ -8,6 +8,7 @@ no tenga que saber donde vive nada. Las claves de API se leen del fichero .env
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -154,9 +155,23 @@ def diagnostico_clave() -> dict:
     valores, fallo = leer_env(ruta)
     despistados = env_mal_nombrados()
     clave = clave_api()
+    tamano = None
+    modificado = ""
+    if ruta.exists():
+        try:
+            info = ruta.stat()
+            tamano = info.st_size
+            modificado = datetime.fromtimestamp(info.st_mtime).strftime(
+                "%d/%m/%Y a las %H:%M:%S"
+            )
+        except OSError:
+            pass
+
     estado = {
         "ruta": str(ruta),
         "existe": ruta.exists(),
+        "tamano": tamano,
+        "modificado": modificado,
         "clave": clave,
         "tiene_clave": bool(clave),
         "mal_nombrados": [str(x) for x in despistados],

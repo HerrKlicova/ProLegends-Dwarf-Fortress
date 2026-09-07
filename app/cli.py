@@ -112,6 +112,9 @@ def cmd_diagnostico(_: argparse.Namespace) -> int:
     print("Configuración de la clave de la API:")
     print(f"      fichero:            {estado['ruta']}")
     print(f"      ¿existe?            {'sí' if estado['existe'] else 'NO'}")
+    if estado["existe"]:
+        print(f"      ocupa:              {estado['tamano']} caracteres")
+        print(f"      guardado por última vez: {estado['modificado']}")
     if estado["fallo_lectura"]:
         print(f"      problema al leerlo: {estado['fallo_lectura']}")
     if estado["mal_nombrados"]:

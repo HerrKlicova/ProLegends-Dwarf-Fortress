@@ -10,6 +10,25 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.1.4 — El aviso de la clave dice qué fichero ha leído
+
+*Arreglos.*
+
+Con la clave pegada en el Bloc de notas, la aplicación seguía diciendo que la
+línea estaba vacía, y no había forma de saber por qué. Las dos causas se
+confunden con facilidad: que el editor no haya guardado todavía, o que se esté
+editando el `.env` de otra carpeta.
+
+**Arreglado**
+
+- El aviso dice ahora **cuántos caracteres ocupa el fichero que ha leído y
+  cuándo se guardó por última vez**. Basta con comparar ese número con el que
+  muestra el Bloc de notas abajo a la derecha: si no coinciden, los cambios no
+  están guardados, o el fichero abierto es otro.
+- El comando `diagnostico` muestra los mismos dos datos.
+
+---
+
 ## v1.1.3 — La clave de la API se lee pase lo que pase
 
 *Arreglos.*
