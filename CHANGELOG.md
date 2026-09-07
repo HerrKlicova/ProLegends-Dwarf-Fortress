@@ -10,6 +10,29 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.3.2 — La mudanza mira también en la versión anterior
+
+*Arreglo del arreglo de la 1.3.1.*
+
+**Arreglado**
+
+- **La mudanza automática no encontraba nada.** Buscaba solo dentro de su
+  propia carpeta, cosa que funciona si actualizas sobrescribiendo, pero no si
+  descomprimes la versión nueva en una carpeta aparte, que es lo normal y lo
+  que dice el propio README: las crónicas de la versión anterior estaban en
+  otra carpeta de la que la nueva no sabía nada.
+- Ahora **busca también las copias anteriores de ProLegends** que haya al lado,
+  en Descargas, en el Escritorio y en Documentos, y rescata de ellas lo que te
+  falte. Sigue sin tocar el disco entero: solo mira carpetas cuyo nombre lleve
+  "ProLegends" y que de verdad tengan un ProLegends dentro.
+- Si encuentra varias, empieza por la más reciente y las repasa todas, así que
+  no se pierde nada aunque tengas tres versiones sueltas por ahí.
+- Como antes: **las crónicas se copian**, nunca se mueven, y las originales se
+  quedan donde estaban de respaldo. Te dice en la ventana negra de qué carpeta
+  ha sacado cada cosa.
+
+---
+
 ## v1.3.1 — Actualizar deja de dar guerra
 
 *Tres arreglos, todos de cosas que estorbaban al actualizar.*

@@ -567,6 +567,47 @@ def main() -> int:
             (vieja / ".env").write_text("ANTHROPIC_API_KEY=\n", encoding="utf-8")
             comprobar(cfg2.clave_api().endswith("DEPRUEBA"),
                       "y si ese se queda vacío, se usa el de la carpeta personal")
+
+            # El caso de verdad: no se actualiza encima, se descomprime la
+            # version nueva en otra carpeta. Las cronicas de la anterior estan
+            # entonces en un sitio del que la nueva no sabe nada.
+            descargas = tmp / "Descargas"
+            anterior = descargas / "ProLegends-Dwarf-Fortress-1.3.1"
+            recien = descargas / "ProLegends-Dwarf-Fortress-1.3.2"
+            (anterior / "app").mkdir(parents=True)
+            (anterior / "data" / "cronicas" / "Momuzosith").mkdir(parents=True)
+            (anterior / "data" / "cronicas" / "Momuzosith" / "figura-7.md").write_text(
+                "---\nmundo: Momuzosith\n---\nLa gesta de Ngôrdax.\n", encoding="utf-8")
+            (anterior / ".env").write_text(
+                "ANTHROPIC_API_KEY=sk-ant-api03-DELAANTERIOR\n", encoding="utf-8")
+            (recien / "app").mkdir(parents=True)
+            (recien / "data" / "imports").mkdir(parents=True)
+
+            personal2 = tmp / "MisDocumentos2" / "ProLegends"
+            cfg2.BASE_DIR = recien
+            cfg2.DATA_DIR_ANTIGUA = recien / "data"
+            cfg2.DATA_DIR = personal2
+            cfg2.IMPORTS_DIR = personal2 / "imports"
+            cfg2.DB_DIR = personal2 / "db"
+            cfg2.DB_PATH = personal2 / "db" / "prolegends.db"
+            os.environ["PROLEGENDS_HOME"] = str(personal2)
+            casa_real = mudanza.Path.home
+            mudanza.Path.home = staticmethod(lambda: tmp)
+            try:
+                mudanza.migrar(log=lambda m: None)
+                rescatada = personal2 / "cronicas" / "Momuzosith" / "figura-7.md"
+                comprobar(rescatada.exists() and "Ngôrdax" in rescatada.read_text(encoding="utf-8"),
+                          "al descomprimir la versión nueva EN OTRA CARPETA, "
+                          "las crónicas de la anterior se rescatan igual")
+                comprobar("DELAANTERIOR" in (personal2 / ".env").read_text(encoding="utf-8"),
+                          "y la clave de la API con ellas")
+                comprobar((anterior / "data" / "cronicas" / "Momuzosith" / "figura-7.md").exists(),
+                          "sin tocar las de la carpeta anterior")
+                comprobar(recien.resolve() not in
+                          [c.resolve() for c in mudanza.instalaciones_anteriores()],
+                          "la copia que se está ejecutando no se busca a sí misma")
+            finally:
+                mudanza.Path.home = casa_real
         finally:
             (cfg2.BASE_DIR, cfg2.DATA_DIR_ANTIGUA, cfg2.DATA_DIR, cfg2.IMPORTS_DIR,
              cfg2.DB_DIR, cfg2.DB_PATH) = guardado[:6]

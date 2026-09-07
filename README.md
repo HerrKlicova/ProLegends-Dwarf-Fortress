@@ -123,9 +123,12 @@ Se hace así para que **bajar una versión nueva no te obligue a copiar nada**:
 descomprimes, doble clic, y ahí siguen tus crónicas, tus mundos ya importados y
 tu clave. La carpeta del programa se puede borrar entera sin perder nada.
 
-La primera vez que arrancas una versión 1.3.1 o posterior, lo que hubiera
-dentro del programa se traslada solo. Las crónicas **se copian**, así que las
-antiguas se quedan de respaldo donde estaban.
+La primera vez que arrancas una versión 1.3.2 o posterior, tus cosas se
+trasladan solas: busca dentro de esta copia y también en las copias anteriores
+de ProLegends que tengas al lado, en Descargas, en el Escritorio o en
+Documentos. Las crónicas **se copian**, así que las antiguas se quedan de
+respaldo donde estaban, y en la ventana negra te dice de dónde ha sacado cada
+cosa.
 
 Si prefieres tenerlo en otro sitio (un disco externo, un pincho USB), define la
 variable de entorno `PROLEGENDS_HOME` con la ruta que quieras.
