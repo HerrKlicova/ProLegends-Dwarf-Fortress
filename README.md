@@ -10,6 +10,46 @@ las crónicas narradas, y solo cuando tú las pides expresamente.
 
 ---
 
+## Descargar
+
+No hace falta saber nada de git ni instalar herramientas raras. Baja el ZIP y
+descomprímelo donde quieras:
+
+**[⬇ Descargar la última versión (ZIP)](https://github.com/HerrKlicova/ProLegends-Dwarf-Fortress/archive/refs/heads/main.zip)**
+
+Es el mismo ZIP para Windows, macOS y Linux: no hay versiones distintas del
+programa, solo cambia el fichero con el que se arranca.
+
+| Sistema | Fichero al que haces doble clic |
+|---|---|
+| Windows | `start.bat` |
+| macOS | `start.command` |
+| Linux | `start.sh` (o `bash start.sh` desde la terminal) |
+
+Si prefieres una versión concreta y no la última:
+[v1.0.0](https://github.com/HerrKlicova/ProLegends-Dwarf-Fortress/archive/refs/tags/v1.0.0.zip).
+
+### Dos avisos de la primera vez
+
+- **Windows** puede sacar una pantalla azul de *Windows protegió tu PC* al
+  abrir `start.bat`, porque es un archivo bajado de internet. Pulsa
+  **Más información** y luego **Ejecutar de todas formas**. Solo pasa una vez.
+- **macOS** puede decir que no puede abrir `start.command` por venir de un
+  desarrollador no identificado. Pulsa el fichero con el **botón derecho**,
+  elige **Abrir** y confirma. También es solo la primera vez.
+
+### Si más adelante bajas una versión nueva
+
+Descomprímela en una carpeta aparte y **copia a la carpeta nueva estas dos
+cosas de la vieja**, si las tienes:
+
+- el fichero `.env` (tu clave de la API)
+- la carpeta `data/db/` (la base de datos, para no reimportar los 45 MB)
+
+Los XML de `data/imports/` puedes copiarlos también, o volver a dejarlos ahí.
+
+---
+
 ## Cómo se usa (Windows)
 
 1. Copia en la carpeta `data/imports/` los ficheros que genera Dwarf Fortress al
@@ -29,7 +69,8 @@ y abre el navegador solo.
 Deja abierta la ventana negra mientras uses la aplicación. Para cerrarla, ciérrala
 o pulsa `Ctrl+C`.
 
-En Linux o macOS el equivalente es `./start.sh`.
+En macOS el equivalente es `start.command` (doble clic) y en Linux
+`./start.sh`.
 
 ### Recuperar el proyecto en otro ordenador
 
@@ -41,6 +82,9 @@ Entra en la carpeta, copia ahí tu fichero `.env` (o duplica `.env.example` como
 `.env` y pega tu clave) y haz doble clic en `start.bat`. Los exports XML y la base
 de datos no viajan en el repositorio: vuelve a dejar los XML en `data/imports/` y
 la aplicación los reimporta sola.
+
+Si no quieres saber nada de git, baja simplemente el ZIP del apartado
+**Descargar** de arriba: es exactamente lo mismo.
 
 ---
 
