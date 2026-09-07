@@ -23,6 +23,10 @@ __pycache__/
 # GitHub, se pueden añadir a mano con 'git add -f data/cronicas'.
 data/cronicas/
 
+# --- Ajustes locales de esta máquina ---
+# Dónde tienes instalado Dwarf Fortress y cosas así: solo valen en tu ordenador.
+data/ajustes.json
+
 # --- Base de datos generada (se regenera importando) ---
 *.db
 *.sqlite
