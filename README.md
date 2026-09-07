@@ -36,7 +36,9 @@ Si prefieres una versión concreta y no la última:
   **Más información** y luego **Ejecutar de todas formas**. Solo pasa una vez.
 - **macOS** puede decir que no puede abrir `start.command` por venir de un
   desarrollador no identificado. Pulsa el fichero con el **botón derecho**,
-  elige **Abrir** y confirma. También es solo la primera vez.
+  elige **Abrir** y confirma. También es solo la primera vez. Si aun así no
+  arranca, abre la aplicación **Terminal**, escribe `bash ` (con el espacio),
+  arrastra el fichero `start.sh` a la ventana y pulsa Intro.
 
 ### Si más adelante bajas una versión nueva
 
