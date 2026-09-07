@@ -54,6 +54,14 @@ def spread_palette(claves) -> dict[str, str]:
     return salida
 
 
+def race_bands(conn: sqlite3.Connection, export_id: int) -> dict[str, tuple[float, float]]:
+    """Franja del circulo cromatico que le toca a cada raza: (centro, ancho)."""
+    razas = sorted(race_palette(conn, export_id).keys())
+    total = len(razas) or 1
+    ancho = 1.0 / total
+    return {raza: ((i + 0.5) * ancho + 0.045, ancho) for i, raza in enumerate(razas)}
+
+
 def race_palette(conn: sqlite3.Connection, export_id: int) -> dict[str, str]:
     if export_id in _PALETAS:
         return _PALETAS[export_id]
@@ -149,16 +157,51 @@ def latest_export(conn: sqlite3.Connection, world_id: int) -> dict:
 
 
 def entity_index(conn: sqlite3.Connection, export_id: int) -> dict[int, dict]:
-    """Todas las entidades del export indexadas por id, con su color."""
-    salida: dict[int, dict] = {}
-    for row in dbmod.all_(
+    """Todas las entidades del export indexadas por id, con su color.
+
+    Cada raza ocupa una franja del circulo cromatico, y las civilizaciones de
+    una misma raza se reparten dentro de su franja: asi dos civilizaciones de
+    goblins se parecen entre si pero no se confunden la una con la otra.
+    """
+    filas = dbmod.all_(
         conn,
         """SELECT entity_id, name, type, race, parent_id, root_id, depth
              FROM entities WHERE export_id = ?""",
         (export_id,),
-    ):
-        row["color"] = color_de(conn, export_id, row["race"], row["name"] or str(row["entity_id"]))
-        salida[row["entity_id"]] = row
+    )
+    salida: dict[int, dict] = {r["entity_id"]: r for r in filas}
+
+    bandas = race_bands(conn, export_id)
+    raices = [r for r in filas if r["root_id"] == r["entity_id"]]
+    por_raza: dict[str, list] = {}
+    for raiz in sorted(raices, key=lambda r: r["entity_id"]):
+        por_raza.setdefault(raiz["race"] or "", []).append(raiz)
+
+    colores: dict[int, str] = {}
+    for raza, lista in por_raza.items():
+        centro, ancho = bandas.get(raza, (None, 0.0))
+        for i, ent in enumerate(lista):
+            if centro is None:
+                colores[ent["entity_id"]] = color_for(ent["name"] or str(ent["entity_id"]))
+                continue
+            # Se reparten dentro de la franja de su raza. El tono apenas se
+            # mueve (para no invadir la franja de la raza vecina); lo que de
+            # verdad las separa es el brillo.
+            desplazamiento = 0.0 if len(lista) == 1 else (
+                (i / (len(lista) - 1) - 0.5) * ancho * 0.4
+            )
+            digest = hashlib.md5((ent["name"] or "").encode("utf-8")).digest()
+            colores[ent["entity_id"]] = _hsl(
+                centro + desplazamiento,
+                0.48 + (digest[0] / 255.0) * 0.22,
+                0.40 + (i % 4) * 0.09,
+            )
+
+    for fila in filas:
+        raiz = colores.get(fila["root_id"])
+        fila["color"] = raiz or color_de(
+            conn, export_id, fila["race"], fila["name"] or str(fila["entity_id"])
+        )
     return salida
 
 

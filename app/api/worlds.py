@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body
 
 from .. import config, db as dbmod
 from ..errors import ProLegendsError
+from . import common
 from .common import Conn, get_export, get_world, load_json, world_exports
 
 router = APIRouter(tags=["mundos"])
@@ -113,6 +114,9 @@ def _run_import(prefijo: Optional[str]) -> None:
             _import_state["error"] = f"Fallo inesperado durante la importacion: {exc}"
     finally:
         conn.close()
+        # Los identificadores de export pueden reutilizarse tras reimportar:
+        # la paleta cacheada tiene que caducar con ellos.
+        common._PALETAS.clear()
         with _import_lock:
             _import_state["activo"] = False
             _import_state["lineas"] = lineas

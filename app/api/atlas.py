@@ -137,16 +137,19 @@ def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
     ids = [f["hf_id"] for f in figuras]
     rastro: dict[int, list] = {i: [] for i in ids}
     marcas_ids = ",".join("?" * len(ids))
-    for row in conn.execute(
-        f"""SELECT hfid, slayer_hfid, year, site_id FROM events
-             WHERE export_id = ? AND site_id IS NOT NULL
-               AND (hfid IN ({marcas_ids}) OR slayer_hfid IN ({marcas_ids}))
-             ORDER BY year, seconds72""",
-        (export_id, *ids, *ids),
-    ):
-        for candidato in (row["hfid"], row["slayer_hfid"]):
-            if candidato in rastro:
-                rastro[candidato].append([row["year"], row["site_id"]])
+    # Dos consultas separadas en lugar de un OR: asi cada una usa su indice.
+    for columna in ("hfid", "slayer_hfid"):
+        # Ojo: el filtro de site_id se hace en Python. Si se pone en el SQL,
+        # SQLite prefiere el indice por sitio y deja de usar el de figura.
+        for row in conn.execute(
+            f"""SELECT {columna} AS quien, year, site_id FROM events
+                 WHERE export_id = ? AND {columna} IN ({marcas_ids})""",
+            (export_id, *ids),
+        ):
+            if row["site_id"] is not None and row["quien"] in rastro:
+                rastro[row["quien"]].append([row["year"], row["site_id"]])
+    for lista in rastro.values():
+        lista.sort(key=lambda par: par[0] if par[0] is not None else 0)
     # Ademas, el sitio con el que la figura tiene vinculo explicito.
     for row in conn.execute(
         f"""SELECT hf_id, site_id FROM hf_site_links

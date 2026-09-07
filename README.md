@@ -193,7 +193,19 @@ python tools/make_sample_export.py data/imports
 ```
 
 genera dos exports de mentira de un mundo inventado, con las mismas trampas de
-formato que los de verdad.
+formato que los de verdad (el segundo contiene todo lo del primero más lo
+ocurrido después, igual que hace Dwarf Fortress).
+
+Y para comprobar de una vez que todo funciona de principio a fin:
+
+```
+python tools/autocomprobacion.py
+```
+
+Genera dos mundos, los importa, comprueba las trampas del formato, la jerarquía
+de entidades, la propiedad año a año, las consultas de la interfaz, el diff entre
+exports y el manejo de un XML corrupto. Termina diciendo `RESULTADO: todo
+correcto` o listando lo que falla.
 
 ---
 
@@ -208,4 +220,14 @@ formato que los de verdad.
 - **Quiero empezar de cero**: borra la carpeta `data/db/` y vuelve a arrancar.
 
 Los exports ya importados no se reprocesan: puedes dejar todos los ficheros en
-`data/imports/` sin miedo.
+`data/imports/` sin miedo. Si vuelves a exportar la misma fecha del mismo mundo
+con contenido distinto, el nuevo sustituye al anterior en lugar de duplicarlo.
+
+### Sobre los ficheros sin pareja
+
+Un `-legends_plus.xml` suelto se ignora con un aviso: por sí solo no sirve de
+nada. Un `-legends.xml` suelto **sí se importa**, también con un aviso, porque un
+export sin DFHack es perfectamente utilizable; lo único que pierdes son los datos
+extra del `_plus` (raza y tipo de entidad, secretos y tramas de intriga). Los
+ficheros `.xml` que no acaben en `-legends.xml` ni en `-legends_plus.xml` se
+ignoran con un aviso por consola.

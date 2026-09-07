@@ -110,21 +110,23 @@ const Mapa = (() => {
       if (raiz !== null && raiz !== undefined) cuenta.set(raiz, (cuenta.get(raiz) || 0) + 1);
     }
     civs.sort((a, b) => (cuenta.get(b.id) || 0) - (cuenta.get(a.id) || 0));
-    UI.poner(caja, ...civs.map((f) => {
-      const fila = UI.el('div', {
-        class: 'fila' + (faccionesApagadas.has(f.id) ? ' apagada' : ''),
-        title: `${f.nombre}${f.raza ? ' · ' + f.raza : ''}`,
-        onclick: () => {
-          faccionesApagadas.has(f.id) ? faccionesApagadas.delete(f.id) : faccionesApagadas.add(f.id);
-          pintarLeyenda(); dibujar();
-        },
-      }, [
-        UI.el('span', { class: 'pastilla', style: `background:${f.color}` }),
-        UI.el('span', { text: f.raza || f.nombre }),
-        UI.el('span', { class: 'conteo', text: String(cuenta.get(f.id) || 0) }),
-      ]);
-      return fila;
-    }));
+    // Puede haber varias civilizaciones de la misma raza, asi que cada una se
+    // identifica por su nombre propio y la raza queda debajo, mas apagada.
+    UI.poner(caja, ...civs.map((f) => UI.el('div', {
+      class: 'fila' + (faccionesApagadas.has(f.id) ? ' apagada' : ''),
+      title: `${f.nombre}${f.raza ? ' · ' + f.raza : ''} — pulsa para ocultarla del mapa`,
+      onclick: () => {
+        faccionesApagadas.has(f.id) ? faccionesApagadas.delete(f.id) : faccionesApagadas.add(f.id);
+        pintarLeyenda(); dibujar();
+      },
+    }, [
+      UI.el('span', { class: 'pastilla', style: `background:${f.color}` }),
+      UI.el('span', { class: 'nombre-faccion' }, [
+        UI.el('span', { class: 'linea1', text: f.nombre || f.raza || `entidad ${f.id}` }),
+        f.raza ? UI.el('span', { class: 'linea2', text: f.raza }) : null,
+      ]),
+      UI.el('span', { class: 'conteo', text: String(cuenta.get(f.id) || 0) }),
+    ])));
     if (!civs.length) UI.poner(caja, UI.el('p', { class: 'nota', text: 'Este export no trae informacion de civilizaciones.' }));
   }
 

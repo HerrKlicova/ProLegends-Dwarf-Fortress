@@ -106,6 +106,10 @@ class Importer:
 
     # ------------------------------------------------------ ciclo de vida
     def _create_export_row(self, fingerprint: str) -> int:
+        # Un mismo prefijo (<mundo>-<anyo>-<mes>-<dia>) identifica un export
+        # concreto. Si se vuelve a exportar esa misma fecha con otro contenido,
+        # sustituye al anterior en lugar de duplicarlo.
+        self.conn.execute("DELETE FROM exports WHERE prefix = ?", (self.pair.prefix,))
         cur = self.conn.execute(
             """INSERT INTO exports
                (world_id, prefix, file_token, game_year, game_month, game_day,

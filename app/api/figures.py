@@ -23,6 +23,21 @@ from .common import (
 router = APIRouter(tags=["figuras"])
 
 
+def _eventos_de_figura(conn, export_id: int, hf_id: int, limite: int) -> list[dict]:
+    filas: dict[int, dict] = {}
+    for columna in ("hfid", "slayer_hfid"):
+        for row in conn.execute(
+            f"SELECT * FROM events WHERE export_id = ? AND {columna} = ? LIMIT ?",
+            (export_id, hf_id, limite),
+        ):
+            filas[row["event_id"]] = dict(row)
+    ordenadas = sorted(
+        filas.values(),
+        key=lambda e: (e["year"] if e["year"] is not None else 0, e["seconds72"] or 0),
+    )
+    return ordenadas[:limite]
+
+
 @router.get("/exports/{export_id}/figuras")
 def buscar(
     export_id: int,
@@ -83,18 +98,26 @@ def matadores(export_id: int, limite: int = Query(50, le=500), conn: sqlite3.Con
             ORDER BY h.kills DESC, h.name LIMIT ?""",
         (export_id, limite),
     )
+    # Las victimas de todos los matadores se piden de una sola vez: con cientos
+    # de miles de eventos, una consulta por matador tarda una eternidad.
+    ids = [f["hf_id"] for f in filas]
+    victimas: dict[int, list] = {i: [] for i in ids}
+    if ids:
+        marcas = ",".join("?" * len(ids))
+        for row in conn.execute(
+            f"""SELECT e.slayer_hfid, e.hfid, e.year, v.name, v.race
+                  FROM events e LEFT JOIN historical_figures v
+                    ON v.export_id = e.export_id AND v.hf_id = e.hfid
+                 WHERE e.export_id = ? AND e.slayer_hfid IN ({marcas})""",
+            (export_id, *ids),
+        ):
+            victimas[row["slayer_hfid"]].append(
+                {"hfid": row["hfid"], "year": row["year"], "name": row["name"], "race": row["race"]}
+            )
     for fila in filas:
         fila["color"] = color_de(conn, export_id, fila["race"])
-        victimas = dbmod.all_(
-            conn,
-            """SELECT e.hfid, e.year, v.name, v.race
-                 FROM events e LEFT JOIN historical_figures v
-                   ON v.export_id = e.export_id AND v.hf_id = e.hfid
-                WHERE e.export_id = ? AND e.slayer_hfid = ?
-                ORDER BY e.year LIMIT 12""",
-            (export_id, fila["hf_id"]),
-        )
-        fila["victimas"] = victimas
+        lista = sorted(victimas.get(fila["hf_id"], []), key=lambda v: v["year"] or 0)
+        fila["victimas"] = lista[:12]
     return {"matadores": filas}
 
 
@@ -191,13 +214,9 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         (export_id, hf_id),
     )
 
-    eventos_raw = dbmod.all_(
-        conn,
-        """SELECT * FROM events
-            WHERE export_id = ? AND (hfid = ? OR slayer_hfid = ?)
-            ORDER BY year, seconds72 LIMIT ?""",
-        (export_id, hf_id, hf_id, limite_eventos),
-    )
+    # Un OR entre dos columnas indexadas impide usar los indices: se piden por
+    # separado y se mezclan aqui.
+    eventos_raw = _eventos_de_figura(conn, export_id, hf_id, limite_eventos)
     eventos = [event_payload(e) for e in eventos_raw]
     nombres_ev = hf_names(
         conn, export_id, [e["hfid"] for e in eventos] + [e["slayer_hfid"] for e in eventos]
@@ -212,13 +231,14 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         conn,
         """SELECT e.hfid, e.year, v.name, v.race FROM events e
              LEFT JOIN historical_figures v ON v.export_id = e.export_id AND v.hf_id = e.hfid
-            WHERE e.export_id = ? AND e.slayer_hfid = ? ORDER BY e.year""",
+            WHERE e.export_id = ? AND e.slayer_hfid = ?""",
         (export_id, hf_id),
     )
+    victimas.sort(key=lambda v: v["year"] if v["year"] is not None else 0)
     muerte = dbmod.one(
         conn,
         """SELECT event_id, year, slayer_hfid, data_json FROM events
-            WHERE export_id = ? AND hfid = ? AND type = 'hf died' ORDER BY year LIMIT 1""",
+            WHERE export_id = ? AND hfid = ? AND type = 'hf died' LIMIT 1""",
         (export_id, hf_id),
     )
     if muerte:
