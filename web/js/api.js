@@ -1,4 +1,4 @@
-/* Acceso a la API interna. Todo pasa por aqui, para que los errores se
+/* Acceso a la API interna. Todo pasa por aquí, para que los errores se
    muestren siempre igual y en castellano. */
 const API = (() => {
 

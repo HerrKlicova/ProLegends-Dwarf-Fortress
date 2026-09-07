@@ -21,7 +21,7 @@ SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
 
 def _load_dotenv() -> None:
-    """Carga .env si existe. Usa python-dotenv si esta disponible; si no, un
+    """Carga .env si existe. Usa python-dotenv si está disponible; si no, un
     parser minimo, para que el arranque nunca dependa de una libreria opcional."""
     env_path = BASE_DIR / ".env"
     if not env_path.exists():
@@ -65,7 +65,7 @@ def env_int(name: str, default: int) -> int:
 HOST = env("PROLEGENDS_HOST", "127.0.0.1")
 PORT = env_int("PROLEGENDS_PORT", 8420)
 
-# --- API de Anthropic (fase 2, cronicas narradas) ---
+# --- API de Anthropic (fase 2, crónicas narradas) ---
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", "claude-sonnet-5")
 ANTHROPIC_MAX_TOKENS = env_int("ANTHROPIC_MAX_TOKENS", 4000)

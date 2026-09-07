@@ -1,5 +1,6 @@
 """Linea de comandos de ProLegends.
 
+    python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
     python -m app.cli ordenar         renombra y ordena los XML de data/imports/
     python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
     python -m app.cli listar          muestra mundos y exports ya importados
@@ -17,6 +18,23 @@ from . import config, db as dbmod
 from .errors import ProLegendsError
 
 
+def _consola_utf8() -> None:
+    """Deja la consola preparada para tildes y eñes.
+
+    En Windows la consola puede venir en una página de códigos antigua que no
+    sabe escribir 'año'. Se intenta pasar a UTF-8; si no se puede, al menos se
+    sustituye el carácter problemático por '?' en lugar de reventar.
+    """
+    for flujo in (sys.stdout, sys.stderr):
+        try:
+            flujo.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
+_consola_utf8()
+
+
 def cmd_importar(args: argparse.Namespace) -> int:
     from .parser.importer import import_all
 
@@ -30,7 +48,7 @@ def cmd_importar(args: argparse.Namespace) -> int:
         )
     print("\nResumen:")
     print(f"  importados: {len(resultado['importados'])}")
-    print(f"  ya estaban: {len(resultado['omitidos'])}")
+    print(f"  ya estában: {len(resultado['omitidos'])}")
     print(f"  con error : {len(resultado['errores'])}")
     for err in resultado["errores"]:
         print(f"    - {err['prefix']}: {err['error']}")
@@ -50,16 +68,16 @@ def cmd_ordenar(args: argparse.Namespace) -> int:
         pendientes = [g for g in grupos if g.cambia]
         if not pendientes:
             if grupos:
-                print("  Todo esta ya ordenado, no hay nada que renombrar.")
+                print("  Todo está ya ordenado, no hay nada que renombrar.")
             else:
-                print(f"  No hay ningun export en {config.IMPORTS_DIR}.")
+                print(f"  No hay ningún export en {config.IMPORTS_DIR}.")
             return 0
 
         print(f"\n  Se van a reorganizar {len(pendientes)} export(s):\n")
         for grupo in pendientes:
             cabecera = grupo.mundo or "mundo desconocido"
             if grupo.fecha:
-                cabecera += f"  (anyo {grupo.fecha[0]})"
+                cabecera += f"  (año {grupo.fecha[0]})"
             print(f"  # {cabecera}")
             for mov in grupo.movimientos:
                 if mov.cambia:
@@ -81,11 +99,68 @@ def cmd_ordenar(args: argparse.Namespace) -> int:
         return 1 if resultado["fallos"] else 0
 
 
+def cmd_diagnostico(_: argparse.Namespace) -> int:
+    """Vuelca lo que la aplicación entiende de cada fichero.
+
+    Sirve para pegar el resultado y averiguar qué pasa sin tener que mover
+    ficheros de 45 MB de un sitio a otro.
+    """
+    from .parser import organizer
+    from .parser.discover import discover
+
+    print(f"Carpeta: {config.IMPORTS_DIR}")
+    ficheros = sorted(config.IMPORTS_DIR.rglob("*.xml"))
+    if not ficheros:
+        print("  (no hay ningún .xml)")
+    for ruta in ficheros:
+        tam = ruta.stat().st_size / 1048576
+        cabecera = organizer.leer_cabecera(ruta)
+        print(f"\n  {ruta.relative_to(config.IMPORTS_DIR)}   ({tam:.1f} MB)")
+        print(f"      ¿es un export de leyendas?  {'sí' if cabecera['es_legends'] else 'NO'}")
+        print(f"      nombre del mundo:           {cabecera['nombre']!r}")
+        print(f"      nombre alternativo:         {cabecera['altnombre']!r}")
+        if cabecera["error"]:
+            print(f"      error al leerlo:            {cabecera['error']}")
+
+    print("\nParejas que se han reconocido:")
+    pares, avisos = discover(config.IMPORTS_DIR)
+    if not pares:
+        print("  (ninguna)")
+    for par in pares:
+        print(f"  - {par.prefix}   (año {par.game_year})")
+        print(f"      principal: {par.main.name if par.main else 'FALTA'}")
+        print(f"      plus:      {par.plus.name if par.plus else 'FALTA'}")
+    for aviso in avisos:
+        print(f"  [aviso] {aviso}")
+
+    with dbmod.session() as conn:
+        print("\nMundos ya guardados en la base de datos:")
+        mundos = dbmod.all_(conn, "SELECT id, name, altname FROM worlds ORDER BY name")
+        if not mundos:
+            print("  (ninguno)")
+        for mundo in mundos:
+            exports = dbmod.all_(
+                conn,
+                "SELECT prefix, status FROM exports WHERE world_id = ? ORDER BY id",
+                (mundo["id"],),
+            )
+            print(f"  - {mundo['name']!r}  (alt: {mundo['altname']!r})")
+            for exp in exports:
+                print(f"      export {exp['prefix']}  [{exp['status']}]")
+        sueltos = dbmod.all_(
+            conn, "SELECT prefix, status, message FROM exports WHERE world_id IS NULL"
+        )
+        for exp in sueltos:
+            print(f"  - export sin mundo: {exp['prefix']} [{exp['status']}] {exp['message']}")
+    print("\nSi algo no cuadra, pega todo esto tal cual.")
+    return 0
+
+
 def cmd_listar(_: argparse.Namespace) -> int:
     with dbmod.session() as conn:
         mundos = dbmod.all_(conn, "SELECT * FROM worlds ORDER BY name")
         if not mundos:
-            print("No hay ningun mundo importado todavia.")
+            print("No hay ningún mundo importado todavía.")
             return 0
         for mundo in mundos:
             print(f"\n# {mundo['name']}" + (f"  ({mundo['altname']})" if mundo["altname"] else ""))
@@ -98,7 +173,7 @@ def cmd_listar(_: argparse.Namespace) -> int:
                 (mundo["id"],),
             ):
                 print(
-                    f"  - {exp['prefix']:<32} anyo {exp['game_year']}  "
+                    f"  - {exp['prefix']:<32} año {exp['game_year']}  "
                     f"mapa {exp['world_width']}x{exp['world_height']}  "
                     f"eventos {exp['min_year']}-{exp['max_year']}  [{exp['status']}]"
                 )
@@ -134,7 +209,7 @@ def cmd_servidor(args: argparse.Namespace) -> int:
     print()
     print("=" * 64)
     print(f"  ProLegends esta funcionando en   {url}")
-    print("  Deja esta ventana abierta mientras uses la aplicacion.")
+    print("  Deja esta ventana abierta mientras uses la aplicación.")
     print("  Para cerrarla: pulsa Ctrl+C o cierra esta ventana.")
     print("=" * 64)
     print()
@@ -172,13 +247,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ord = sub.add_parser(
         "ordenar",
-        help="renombra los XML segun el mundo y la fecha, y los reparte por carpetas",
+        help="renombra los XML según el mundo y la fecha, y los reparte por carpetas",
     )
     p_ord.add_argument("--aplicar", action="store_true",
                        help="hacerlo de verdad (sin esto solo se muestra el plan)")
     p_ord.add_argument("--sin-carpetas", action="store_true", dest="sin_carpetas",
                        help="renombrar pero dejarlo todo en data/imports/")
     p_ord.set_defaults(func=cmd_ordenar)
+
+    p_diag = sub.add_parser(
+        "diagnostico", help="dice qué ve la aplicación en cada fichero de data/imports/"
+    )
+    p_diag.set_defaults(func=cmd_diagnostico)
 
     p_lst = sub.add_parser("listar", help="mundos y exports ya importados")
     p_lst.set_defaults(func=cmd_listar)

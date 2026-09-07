@@ -7,6 +7,10 @@ REM  y abre el navegador.
 REM ==================================================================
 setlocal
 cd /d "%~dp0"
+REM Consola en UTF-8: sin esto, las tildes y la enye salen como simbolos raros.
+chcp 65001 >nul 2>&1
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
 title ProLegends - explorador de leyendas de Dwarf Fortress
 
 echo.

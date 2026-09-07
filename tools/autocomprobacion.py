@@ -9,6 +9,7 @@ esto lo dice sin necesidad de mirar codigo:
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,8 @@ sys.path.insert(0, str(RAIZ))
 from app import db as dbmod  # noqa: E402
 from app.api import atlas, figures, fortress as fapi  # noqa: E402
 from app.errors import ProLegendsError  # noqa: E402
+from app.parser import organizer  # noqa: E402
+from app.parser.discover import discover  # noqa: E402
 from app.parser.importer import import_all  # noqa: E402
 
 fallos: list[str] = []
@@ -51,7 +54,7 @@ def main() -> int:
         conn = dbmod.connect(tmp / "prueba.db")
         dbmod.init_db(conn)
 
-        print("\n1. Importacion")
+        print("\n1. Importación")
         r = import_all(conn, imports_dir=importados, verbose=False, log=lambda m: None)
         comprobar(len(r["importados"]) == 4, "se importan los 4 exports (2 mundos x 2 fechas)")
         comprobar(not r["errores"], "ninguno da error")
@@ -66,12 +69,12 @@ def main() -> int:
             conn, "SELECT world_width w FROM exports WHERE world_id = ? ORDER BY id DESC LIMIT 1",
             (m["id"],))["w"] for m in mundos}
         comprobar(len(set(anchos.values())) == 2,
-                  f"cada mundo deduce su propio tamano de mapa: {anchos}")
+                  f"cada mundo deduce su propio tamaño de mapa: {anchos}")
 
         print("\n3. Trampas del formato")
         con_sol = dbmod.one(
             conn, "SELECT COUNT(*) n FROM sites WHERE name LIKE '%' || char(9788) || '%'")
-        comprobar(con_sol["n"] > 0, "los bytes de control C0 se leen como su simbolo CP437")
+        comprobar(con_sol["n"] > 0, "los bytes de control C0 se leen como su símbolo CP437")
         acentos = dbmod.one(
             conn, "SELECT COUNT(*) n FROM historical_figures WHERE name LIKE '%é%'")
         comprobar(acentos["n"] > 0, "los caracteres altos de CP437 se decodifican bien")
@@ -80,7 +83,7 @@ def main() -> int:
         comprobar(entidades_con_tipo["n"] > 0,
                   "el nombre del principal y el tipo del _plus acaban en la misma fila")
 
-        print("\n4. Jerarquia y propiedad")
+        print("\n4. Jerarquía y propiedad")
         export = dbmod.one(conn, "SELECT id FROM exports ORDER BY id DESC LIMIT 1")["id"]
         hijas = dbmod.one(
             conn, "SELECT COUNT(*) n FROM entities WHERE export_id = ? AND depth > 0", (export,))
@@ -91,7 +94,7 @@ def main() -> int:
         comprobar(raices["n"] > 0, "los sitios saben a que civilizacion pertenecen")
         cambios = dbmod.one(
             conn, "SELECT COUNT(*) n FROM site_ownership WHERE export_id = ?", (export,))
-        comprobar(cambios["n"] > 0, "hay historico de propietarios por anyo")
+        comprobar(cambios["n"] > 0, "hay histórico de propietarios por anyo")
         ruinas = dbmod.one(
             conn, "SELECT COUNT(*) n FROM sites WHERE export_id = ? AND state = 'ruinas'", (export,))
         comprobar(ruinas["n"] >= 0, f"sitios en ruinas detectados: {ruinas['n']}")
@@ -113,7 +116,7 @@ def main() -> int:
         fort = fapi.fortaleza(mundo_id, 20, conn)
         comprobar(fort["seleccion"]["site_id"] is not None or fort["seleccion"]["candidatos"],
                   "se detecta la fortaleza o al menos se ofrecen candidatos")
-        comprobar(fort["novedades"] is not None, "el diff entre los dos exports esta disponible")
+        comprobar(fort["novedades"] is not None, "el diff entre los dos exports está disponible")
         if fort["novedades"]:
             comprobar(fort["novedades"]["eventos_nuevos"] > 0,
                       f"el diff encuentra sucesos nuevos: {fort['novedades']['eventos_nuevos']}")
@@ -129,9 +132,7 @@ def main() -> int:
             comprobar("corrupto o incompleto" in r3["errores"][0]["error"],
                       f"con mensaje legible: \"{r3['errores'][0]['error']}\"")
 
-        print("\n8. Ordenacion automatica de los ficheros")
-        from app.parser import organizer  # noqa: E402
-
+        print("\n8. Ordenación automática de los ficheros")
         orden = tmp / "orden"
         orden.mkdir()
         generar(orden, "--mundo", "khazadum", "--token", "region1", "--solo-uno")
@@ -155,11 +156,11 @@ def main() -> int:
         grupos2, _ = organizer.planificar(orden)
         organizer.aplicar([g for g in grupos2 if g.cambia])
         comprobar(esperado.read_bytes()[:200] == antes,
-                  "si el destino ya existe, no se sobrescribe el fichero que habia")
+                  "si el destino ya existe, no se sobrescribe el fichero que había")
         comprobar((orden / "region1-00160-07-24-legends.xml").exists(),
                   "y el que no se ha podido mover sigue donde estaba")
 
-        # Renombrar despues de importar no provoca una reimportacion.
+        # Renombrar después de importar no provoca una reimportacion.
         print("\n9. Renombrar lo ya importado no obliga a reprocesar")
         orden2 = tmp / "orden2"
         orden2.mkdir()
@@ -175,8 +176,76 @@ def main() -> int:
                   "tras renombrarlo, NO se vuelve a procesar")
         fila = dbmod.one(conn2, "SELECT prefix FROM exports LIMIT 1")
         comprobar(fila and fila["prefix"].startswith("erebor"),
-                  f"y la aplicacion ya lo llama por su nombre bonito: {fila['prefix']}")
+                  f"y la aplicación ya lo llama por su nombre bonito: {fila['prefix']}")
         conn2.close()
+
+        print("\n10. Exports del mundo real (fallos encontrados en uso)")
+        real = tmp / "real"
+        real.mkdir()
+        generar(real, "--mundo", "ruspsmaksmo", "--token", "region1", "--solo-uno")
+
+        # (a) El _plus de DFHack anuncia el nombre TRADUCIDO del mundo, no el
+        #     interno. Si cada fichero decidiese por su cuenta, la pareja
+        #     acabaría partida en dos carpetas distintas.
+        plus = next(real.glob("*-legends_plus.xml"))
+        datos = plus.read_bytes().decode("cp437")
+        plus.write_bytes(
+            datos.replace("<name>ruspsmaksmo</name>", "<name>The Water of Rubbing</name>", 1)
+            .encode("cp437", "replace")
+        )
+
+        # (b) Al copiar o subir los ficheros, cada uno puede llevar delante una
+        #     marca de tiempo distinta, así que sus nombres dejan de coincidir.
+        principal = next(real.glob("*-legends.xml"))
+        principal.rename(real / "1788648304009_region1-00101-07-24-legends.xml")
+        plus.rename(real / "1788648304461_region1-00101-07-24-legends_plus.xml")
+
+        pares, _ = discover(real)
+        comprobar(len(pares) == 1 and pares[0].main and pares[0].plus,
+                  "empareja los dos ficheros aunque tengan prefijos distintos")
+
+        g4, _ = organizer.planificar(real)
+        carpetas = {m.destino.parent.name for g in g4 for m in g.movimientos}
+        comprobar(len(carpetas) == 1,
+                  f"los dos ficheros van a la MISMA carpeta: {carpetas}")
+
+        # (c) Un export sin nombre de mundo: no debe colarse el nombre de la
+        #     primera región, que es el primer <name> que aparece.
+        sin_nombre = tmp / "sinnombre"
+        sin_nombre.mkdir()
+        generar(sin_nombre, "--mundo", "quesea", "--token", "region2", "--solo-uno")
+        objetivo = next(sin_nombre.glob("*-legends.xml"))
+        crudo = objetivo.read_bytes().decode("cp437")
+        crudo = re.sub(r"<name>.*?</name>\n<altname>.*?</altname>\n", "", crudo, count=1)
+        objetivo.write_bytes(crudo.encode("cp437", "replace"))
+        cabecera = organizer.leer_cabecera(objetivo)
+        comprobar(cabecera["nombre"] is None,
+                  f"sin nombre de mundo no se inventa uno: {cabecera['nombre']!r}")
+
+        print("\n11. La interfaz y el servidor hablan de las mismas rutas")
+        rutas_servidor = set()
+        for fichero in sorted((RAIZ / "app" / "api").glob("*.py")):
+            for m in re.finditer(r"@router\.(get|post)\(\s*[\"\']([^\"\']+)",
+                                 fichero.read_text(encoding="utf-8")):
+                rutas_servidor.add("/api" + m.group(2))
+        rutas_servidor.add("/salud")
+
+        def patron(ruta: str) -> str:
+            return re.sub(r"\{[^}]*\}", "{}", ruta)
+
+        servidor = {patron(r) for r in rutas_servidor}
+        api_js = (RAIZ / "web" / "js" / "api.js").read_text(encoding="utf-8")
+        pedidas = set()
+        for m in re.finditer(r"[\"\'`](/api/[^\"\'`]*)[\"\'`]", api_js):
+            ruta = m.group(1).split("?")[0]
+            pedidas.add(patron(re.sub(r"\$\{[^}]*\}", "{}", ruta)))
+
+        huerfanas = sorted(pedidas - servidor)
+        comprobar(not huerfanas,
+                  f"ninguna llamada de la interfaz apunta a una ruta inexistente"
+                  + (f": {huerfanas}" if huerfanas else ""))
+        comprobar(len(pedidas) > 10,
+                  f"se han revisado {len(pedidas)} rutas distintas")
 
         conn.close()
     finally:

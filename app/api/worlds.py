@@ -1,4 +1,4 @@
-"""Mundos, exports e importacion."""
+"""Mundos, exports e importación."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .common import Conn, get_export, get_world, load_json, world_exports
 
 router = APIRouter(tags=["mundos"])
 
-# Estado de la importacion en curso (la interfaz lo consulta para la barra).
+# Estado de la importación en curso (la interfaz lo consulta para la barra).
 _import_state: dict = {"activo": False, "lineas": [], "resultado": None, "error": None}
 _import_lock = threading.Lock()
 
@@ -86,7 +86,7 @@ def detalle_export(export_id: int, conn: sqlite3.Connection = Conn):
     }
 
 
-# ------------------------------------------------------------- importacion
+# ------------------------------------------------------------- importación
 def _run_import(prefijo: Optional[str], ordenar: bool = True) -> None:
     from ..parser import organizer
     from ..parser.importer import import_all
@@ -104,8 +104,8 @@ def _run_import(prefijo: Optional[str], ordenar: bool = True) -> None:
     try:
         dbmod.init_db(conn)
         if ordenar:
-            # Renombrar antes de importar: asi el export se registra ya con su
-            # nombre definitivo y no hay que reprocesarlo despues.
+            # Renombrar antes de importar: así el export se registra ya con su
+            # nombre definitivo y no hay que reprocesarlo después.
             grupos, avisos = organizer.planificar(config.IMPORTS_DIR, conn=conn)
             for aviso in avisos:
                 log(f"  [aviso] {aviso}")
@@ -124,7 +124,7 @@ def _run_import(prefijo: Optional[str], ordenar: bool = True) -> None:
             _import_state["error"] = exc.message
     except Exception as exc:  # pragma: no cover
         with _import_lock:
-            _import_state["error"] = f"Fallo inesperado durante la importacion: {exc}"
+            _import_state["error"] = f"Fallo inesperado durante la importación: {exc}"
     finally:
         conn.close()
         # Los identificadores de export pueden reutilizarse tras reimportar:

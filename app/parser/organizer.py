@@ -2,7 +2,7 @@
 
 Dwarf Fortress nombra los exports con el nombre de la CARPETA de la partida
 (region1, region4...), que no dice nada de que mundo es. Este modulo lee el
-nombre real del mundo -que esta en los primeros bytes del XML, asi que no hace
+nombre real del mundo -que está en los primeros bytes del XML, asi que no hace
 falta leerse los 45 MB- y deja los ficheros asi:
 
     data/imports/momuzosith/momuzosith-00101-07-24-legends.xml
@@ -27,19 +27,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from .discover import MAIN_SUFFIX, PLUS_SUFFIX, _PREFIX_RE
+from .discover import MAIN_SUFFIX, PLUS_SUFFIX
 from .xmlstream import SanitizedXMLStream
 
-CABECERA_BYTES = 65536  # de sobra: el nombre del mundo esta en la 3a linea
+CABECERA_BYTES = 65536  # de sobra: el nombre del mundo esta en la 3a línea
 
 _RE_DF_WORLD = re.compile(r"<df_world[\s>]", re.IGNORECASE)
-_RE_NOMBRE = re.compile(r"<(name|n)>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
-_RE_ALTNAME = re.compile(r"<altname>(.*?)</altname>", re.IGNORECASE | re.DOTALL)
+_RE_ETIQUETA = re.compile(r"<(/?)([A-Za-z_][\w.-]*)([^>]*?)(/?)>", re.DOTALL)
 
 
 # --------------------------------------------------------------- cabecera
 def leer_cabecera(path: Path) -> dict:
-    """Lee solo el principio del XML y saca de ahi el nombre del mundo."""
+    """Lee solo el principio del XML y saca de ahí el nombre del mundo.
+
+    Importa mucho coger el nombre del MUNDO y no el de la primera región que
+    aparezca: dentro de <regions> hay un <name> por cada región, y en los
+    exports que no traen nombre de mundo eso es lo primero que se encuentra.
+    Por eso aquí solo se aceptan las etiquetas que cuelgan directamente de
+    <df_world>.
+    """
     datos = {"es_legends": False, "nombre": None, "altnombre": None, "error": None}
     try:
         stream = SanitizedXMLStream(path)
@@ -56,13 +62,38 @@ def leer_cabecera(path: Path) -> dict:
         return datos
     datos["es_legends"] = True
 
-    resto = texto[inicio.end():]
-    nombre = _RE_NOMBRE.search(resto)
-    if nombre:
-        datos["nombre"] = nombre.group(2).strip() or None
-    alt = _RE_ALTNAME.search(resto)
-    if alt:
-        datos["altnombre"] = alt.group(1).strip() or None
+    profundidad = 0            # 0 = justo dentro de <df_world>
+    abierta = None             # etiqueta de primer nivel que está abierta
+    desde = inicio.end()
+
+    for m in _RE_ETIQUETA.finditer(texto, inicio.end()):
+        es_cierre, etiqueta, _, auto_cierre = (
+            m.group(1), m.group(2).lower(), m.group(3), m.group(4)
+        )
+
+        if es_cierre:
+            if profundidad == 1 and abierta == etiqueta:
+                contenido = texto[desde:m.start()].strip()
+                if etiqueta in ("name", "n") and not datos["nombre"]:
+                    datos["nombre"] = contenido or None
+                elif etiqueta == "altname" and not datos["altnombre"]:
+                    datos["altnombre"] = contenido or None
+                abierta = None
+            profundidad -= 1
+            if profundidad < 0:        # se acaba de cerrar <df_world>
+                break
+            continue
+
+        if auto_cierre:                # etiqueta vacía tipo <deity/>
+            continue
+
+        profundidad += 1
+        if profundidad == 1:
+            abierta = etiqueta
+            desde = m.end()
+        if datos["nombre"] and datos["altnombre"]:
+            break
+
     return datos
 
 
@@ -110,13 +141,6 @@ class GrupoPlan:
         return self.aplicable and any(m.cambia for m in self.movimientos)
 
 
-def _fecha_de(nombre_prefijo: str) -> Optional[tuple[int, int, int]]:
-    m = _PREFIX_RE.match(nombre_prefijo)
-    if not m:
-        return None
-    return int(m.group("year")), int(m.group("month")), int(m.group("day"))
-
-
 def _partes(path: Path) -> Optional[tuple[str, str]]:
     """Devuelve (prefijo, sufijo) si el fichero es un export de legends."""
     nombre = path.name
@@ -132,11 +156,21 @@ def planificar(
     en_carpetas: bool = True,
     conn: Optional[sqlite3.Connection] = None,
 ) -> tuple[list[GrupoPlan], list[str]]:
-    """Calcula que habria que renombrar y mover, sin tocar nada."""
+    """Calcula qué habría que renombrar y mover, sin tocar nada.
+
+    Se parte de las PAREJAS que detecta el descubridor, no de los ficheros
+    sueltos. Esto es importante: el fichero principal y el _plus del mismo
+    export pueden anunciar nombres de mundo distintos (DFHack escribe en el
+    _plus el nombre traducido), así que el mundo se decide una sola vez para
+    la pareja y los dos ficheros acaban en la misma carpeta.
+    """
+    from .discover import discover
+
     imports_dir = Path(imports_dir)
-    avisos: list[str] = []
     if not imports_dir.exists():
         return [], [f"La carpeta {imports_dir} no existe."]
+
+    pares, avisos = discover(imports_dir)
 
     # Fechas ya conocidas de exports importados, por si el nombre no la trae.
     fechas_bd: dict[str, tuple[int, int, int]] = {}
@@ -153,57 +187,72 @@ def planificar(
         except sqlite3.Error:
             pass
 
-    grupos: dict[str, GrupoPlan] = {}
-    for path in sorted(imports_dir.rglob("*.xml")):
-        if not path.is_file():
+    grupos: list[GrupoPlan] = []
+    for par in pares:
+        ficheros = [f for f in (par.main, par.plus) if f is not None]
+        if not ficheros:
             continue
-        partes = _partes(path)
-        if partes is None:
-            avisos.append(
-                f"Se deja como esta '{path.name}': no acaba en '-legends.xml' "
-                "ni en '-legends_plus.xml', asi que no se sabe que es."
-            )
-            continue
-        prefijo, sufijo = partes
 
-        cabecera = leer_cabecera(path)
-        if cabecera["error"]:
-            avisos.append(f"No se ha podido leer '{path.name}': {cabecera['error']}")
+        cabeceras = {f: leer_cabecera(f) for f in ficheros}
+        error = next((c["error"] for c in cabeceras.values() if c["error"]), None)
+        if error:
+            avisos.append(f"No se ha podido leer '{par.prefix}': {error}")
             continue
-        if not cabecera["es_legends"]:
+        if not any(c["es_legends"] for c in cabeceras.values()):
             avisos.append(
-                f"Se deja como esta '{path.name}': no parece un export de legends "
-                "(no empieza por <df_world>)."
+                f"Se deja como está '{ficheros[0].name}': no parece un export de "
+                "leyendas (no empieza por <df_world>)."
             )
             continue
 
-        fecha = _fecha_de(prefijo) or fechas_bd.get(str(path.resolve()))
-        mundo = cabecera["nombre"]
-        nombre_slug = slug(mundo, por_defecto=slug(prefijo.split("-")[0], "mundo"))
+        cab_main = cabeceras.get(par.main, {}) if par.main else {}
+        cab_plus = cabeceras.get(par.plus, {}) if par.plus else {}
+        # El nombre interno del principal manda; el _plus solo si el principal
+        # no lo trae, que pasa en los exports sin DFHack.
+        nombre = cab_main.get("nombre") or cab_plus.get("nombre")
+        altnombre = cab_main.get("altnombre") or cab_plus.get("altnombre")
+        if not nombre:
+            nombre = altnombre
+        nombre_slug = slug(nombre, por_defecto=slug(par.file_token or par.prefix, "mundo"))
 
-        # Los dos ficheros del mismo export comparten mundo y fecha.
-        clave = f"{nombre_slug}|{fecha if fecha else prefijo}"
-        grupo = grupos.get(clave)
-        if grupo is None:
-            grupo = GrupoPlan(clave=clave, mundo=mundo, slug_mundo=nombre_slug, fecha=fecha)
-            grupos[clave] = grupo
+        if par.game_year is not None:
+            fecha = (par.game_year, par.game_month or 1, par.game_day or 1)
+        else:
+            fecha = next(
+                (fechas_bd[str(f.resolve())] for f in ficheros
+                 if str(f.resolve()) in fechas_bd),
+                None,
+            )
 
+        grupo = GrupoPlan(
+            clave=par.prefix, mundo=nombre, slug_mundo=nombre_slug, fecha=fecha
+        )
+        if not nombre:
+            grupo.aviso = (
+                "Este export no dice cómo se llama el mundo, así que se usa el "
+                "nombre del fichero."
+            )
         if fecha:
             base = f"{nombre_slug}-{fecha[0]:05d}-{fecha[1]:02d}-{fecha[2]:02d}"
         else:
             base = nombre_slug
             grupo.aviso = (
-                "El nombre no lleva fecha y este export todavia no esta importado, "
-                "asi que se queda sin ella. Vuelve a ordenar despues de importarlo "
-                "y se le pondra."
+                "El nombre no lleva fecha y este export todavía no está importado, "
+                "así que se queda sin ella. Vuelve a ordenar después de importarlo "
+                "y se le pondrá."
             )
+
         carpeta = imports_dir / nombre_slug if en_carpetas else imports_dir
-        destino = carpeta / f"{base}{sufijo}"
-        grupo.movimientos.append(Movimiento(path, destino))
+        for fichero in ficheros:
+            sufijo = PLUS_SUFFIX if fichero is par.plus else MAIN_SUFFIX
+            grupo.movimientos.append(
+                Movimiento(fichero, carpeta / f"{base}{sufijo}")
+            )
+        grupos.append(grupo)
 
     # Comprobaciones de seguridad, ya con todos los destinos calculados.
     reservados: dict[str, Path] = {}
-    for grupo in grupos.values():
+    for grupo in grupos:
         for mov in grupo.movimientos:
             if not mov.cambia:
                 continue
@@ -211,7 +260,7 @@ def planificar(
             if destino in reservados:
                 grupo.aplicable = False
                 grupo.aviso = (
-                    f"Dos ficheros distintos querrian llamarse '{mov.destino.name}'. "
+                    f"Dos ficheros distintos querrían llamarse '{mov.destino.name}'. "
                     "No se toca ninguno de los dos."
                 )
             reservados[destino] = mov.origen
@@ -222,11 +271,11 @@ def planificar(
                     "distinto. No se sobrescribe nada."
                 )
 
-    ordenados = sorted(grupos.values(), key=lambda g: (g.slug_mundo or "", g.clave))
-    for grupo in ordenados:
+    grupos.sort(key=lambda g: (g.slug_mundo or "", g.clave))
+    for grupo in grupos:
         if grupo.aviso and not grupo.aplicable:
             avisos.append(grupo.aviso)
-    return ordenados, avisos
+    return grupos, avisos
 
 
 # --------------------------------------------------------------- aplicar

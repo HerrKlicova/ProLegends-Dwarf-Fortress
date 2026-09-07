@@ -23,11 +23,11 @@ class ProLegendsError(Exception):
 
 
 class ImportError_(ProLegendsError):
-    """Fallo durante la importacion de un export."""
+    """Fallo durante la importación de un export."""
 
 
 class CorruptXMLError(ProLegendsError):
-    """El XML no se ha podido parsear ni despues de sanearlo."""
+    """El XML no se ha podido parsear ni después de sanearlo."""
 
     def __init__(self, path: str, detail: str) -> None:
         super().__init__(

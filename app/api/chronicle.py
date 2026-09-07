@@ -21,7 +21,7 @@ router = APIRouter(tags=["cronicas"])
 def _ambito(payload: dict) -> dict:
     ambito = payload.get("ambito") or {}
     if not isinstance(ambito, dict) or "tipo" not in ambito:
-        raise ProLegendsError("Falta indicar el ambito de la cronica.")
+        raise ProLegendsError("Falta indicar el ámbito de la crónica.")
     return ambito
 
 
@@ -37,7 +37,7 @@ def estado():
 
 @router.post("/cronicas/preparar")
 def preparar(payload: dict = Body(...), conn: sqlite3.Connection = Conn):
-    """Muestra que se enviaria y si ya hay una version guardada. NO llama a la API."""
+    """Muestra que se enviaria y si ya hay una versión guardada. NO llama a la API."""
     export_id = int(payload["export_id"])
     exp = get_export(conn, export_id)
     ambito = _ambito(payload)

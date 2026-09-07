@@ -1,14 +1,14 @@
 """Reconstruccion cronologica de la propiedad de los sitios.
 
-El XML no trae un campo "quien manda aqui". Hay que deducirlo recorriendo los
-eventos historicos ordenados por anyo:
+El XML no trae un campo "quién manda aquí". Hay que deducirlo recorriendo los
+eventos historicos ordenados por año:
 
     'created site'                        -> el propietario pasa a ser civ_id
     'site taken over'                     -> el propietario pasa a ser attacker_civ_id
     'destroyed site' / 'hf destroyed site' -> el sitio queda en ruinas
 
 Se guarda el HISTORICO COMPLETO (una fila por cambio), no solo el estado final,
-porque es lo que alimenta el deslizador de anyo del mapa.
+porque es lo que alimenta el deslizador de año del mapa.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ def rebuild_ownership(conn: sqlite3.Connection, export_id: int) -> None:
 
     # Sitios que nunca aparecen en un evento de creacion pero que el _plus dice
     # que pertenecen a alguien (guaridas, fortalezas oscuras antiguas...). Se
-    # anota una fila inicial en el primer anyo conocido del mundo.
+    # anota una fila inicial en el primer año conocido del mundo.
     primer_anyo = conn.execute(
         "SELECT COALESCE(MIN(year), 0) FROM events WHERE export_id = ? AND year >= 0",
         (export_id,),
@@ -78,7 +78,7 @@ def rebuild_ownership(conn: sqlite3.Connection, export_id: int) -> None:
 
 
 def _apply_current_state(conn: sqlite3.Connection, export_id: int) -> None:
-    """Vuelca en la tabla sites el ultimo estado conocido y el anyo de fundacion."""
+    """Vuelca en la tabla sites el último estado conocido y el año de fundacion."""
     conn.execute(
         """UPDATE sites SET
              owner_id = (
@@ -103,7 +103,7 @@ def _apply_current_state(conn: sqlite3.Connection, export_id: int) -> None:
             WHERE export_id = ? AND owner_id IS NULL AND state <> ?""",
         (export_id, L.STATE_RUINS),
     )
-    # Civilizacion raiz del propietario, subiendo por la jerarquia de entidades.
+    # Civilizacion raíz del propietario, subiendo por la jerarquía de entidades.
     conn.execute(
         """UPDATE sites SET root_civ_id = (
                 SELECT e.root_id FROM entities e

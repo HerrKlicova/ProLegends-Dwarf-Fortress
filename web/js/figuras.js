@@ -1,4 +1,4 @@
-/* Explorador de figuras historicas y de entidades. Todo enlazado entre si. */
+/* Explorador de figuras históricas y de entidades. Todo enlazado entre si. */
 const Figuras = (() => {
   const el = UI.el;
   let ultimaBusqueda = '';
@@ -21,7 +21,7 @@ const Figuras = (() => {
     UI.poner(sel, el('option', { value: '', text: `todas (${datos.total} figuras)` }),
       ...datos.razas.map((r) => el('option', { value: r.race, text: `${r.race} (${r.n})` })));
     UI.poner(document.getElementById('panel-figura'),
-      el('p', { class: 'vacio', text: 'Busca una figura historica y pincha en ella.' }));
+      el('p', { class: 'vacio', text: 'Busca una figura histórica y pincha en ella.' }));
     await listar();
   }
 
@@ -78,9 +78,9 @@ const Figuras = (() => {
         el('div', { class: 'tipo', text: [f.raza, f.casta, f.tipo].filter(Boolean).join(' · ') }),
       ]),
       UI.datos([
-        ['Nacimiento', f.nacimiento === null || f.nacimiento === -1 ? null : `anyo ${f.nacimiento}`],
-        ['Muerte', f.vive ? 'sigue viva' : (f.muerte === -1 ? 'desconocida' : `anyo ${f.muerte}`)],
-        ['Aparecio', f.aparecio === null || f.aparecio === -1 ? null : `anyo ${f.aparecio}`],
+        ['Nacimiento', f.nacimiento === null || f.nacimiento === -1 ? null : `año ${f.nacimiento}`],
+        ['Muerte', f.vive ? 'sigue viva' : (f.muerte === -1 ? 'desconocida' : `año ${f.muerte}`)],
+        ['Apareció', f.aparecio === null || f.aparecio === -1 ? null : `año ${f.aparecio}`],
         ['Muertes causadas', f.muertes_causadas || null],
         ['Rasgos', banderas.length ? banderas.join(', ') : null],
       ]),
@@ -95,8 +95,8 @@ const Figuras = (() => {
         el('span', { class: 'nota', text: ' ' + UI.detallesTexto(f.ficha_muerte.detalles) }),
       ])) : null,
 
-      f.pertenencias.length ? UI.bloque('Entidades a las que pertenece o pertenecio',
-        UI.tabla(['Entidad', 'Tipo', 'Vinculo'], f.pertenencias.map((p) => [
+      f.pertenencias.length ? UI.bloque('Entidades a las que pertenece o perteneció',
+        UI.tabla(['Entidad', 'Tipo', 'Vínculo'], f.pertenencias.map((p) => [
           p.entidad
             ? el('span', { class: 'enlace', text: p.entidad, onclick: () => verEntidad(p.entidad_id) })
             : `entidad ${p.entidad_id}`,
@@ -144,29 +144,29 @@ const Figuras = (() => {
         ]))) : null,
 
       f.relaciones.length ? UI.bloque('Relaciones',
-        UI.tabla(['Figura', 'Vinculo'], f.relaciones.slice(0, 120).map((r) => [
+        UI.tabla(['Figura', 'Vínculo'], f.relaciones.slice(0, 120).map((r) => [
           r.nombre
             ? el('span', { class: 'enlace', text: r.nombre, onclick: () => abrir(r.hf_id) })
             : `figura ${r.hf_id}`,
           r.vinculo || '—',
         ]))) : null,
 
-      f.victimas.length ? UI.bloque(`A quien mato (${f.victimas.length})`,
-        UI.tabla(['Anyo', 'Victima', 'Raza'], f.victimas.map((v) => [
+      f.victimas.length ? UI.bloque(`A quién mato (${f.victimas.length})`,
+        UI.tabla(['Año', 'Víctima', 'Raza'], f.victimas.map((v) => [
           String(UI.anyo(v.year)),
           v.name ? el('span', { class: 'enlace', text: v.name, onclick: () => abrir(v.hfid) }) : `figura ${v.hfid}`,
           v.race || '—',
         ]))) : null,
 
       f.eventos.length ? UI.bloque(`Sucesos de su vida (${f.eventos.length}${f.eventos_truncados ? '+' : ''})`,
-        UI.tabla(['Anyo', 'Suceso', 'Lugar', 'Detalles'], f.eventos.map((ev) => [
+        UI.tabla(['Año', 'Suceso', 'Lugar', 'Detalles'], f.eventos.map((ev) => [
           String(UI.anyo(ev.anyo)), UI.tipoLegible(ev.tipo),
           ev.sitio ? el('span', { class: 'enlace', text: ev.sitio, onclick: () => App.verSitio(ev.site_id) }) : '—',
           el('span', { class: 'nota', text: UI.detallesTexto(ev.detalles) }),
         ]))) : null,
 
       el('div', { class: 'bloque' }, [
-        el('button', { class: 'boton', text: 'Generar cronica de esta figura',
+        el('button', { class: 'boton', text: 'Generar crónica de esta figura',
           onclick: () => Cronicas.pedir({ tipo: 'figura', hf_id: f.id }, `Vida de ${f.nombre}`) }),
       ]),
     ]);
@@ -194,7 +194,7 @@ const Figuras = (() => {
       ]),
       UI.datos([
         ['Pertenece a', e.padre ? el('span', { class: 'enlace', text: e.padre.nombre, onclick: () => verEntidad(e.padre.id) }) : null],
-        ['Civilizacion raiz', e.raiz && e.raiz.id !== e.id
+        ['Civilización raíz', e.raiz && e.raiz.id !== e.id
           ? el('span', { class: 'enlace', text: e.raiz.nombre, onclick: () => verEntidad(e.raiz.id) }) : null],
       ]),
       e.hijos.length ? UI.bloque(`Entidades hijas (${e.hijos.length})`,
@@ -207,7 +207,7 @@ const Figuras = (() => {
           s.type || '—', s.state || '—',
         ]))) : null,
       e.guerras.length ? UI.bloque('Guerras y conflictos',
-        UI.tabla(['Anyos', 'Nombre', 'Atacante', 'Defensor'], e.guerras.map((g) => [
+        UI.tabla(['Años', 'Nombre', 'Atacante', 'Defensor'], e.guerras.map((g) => [
           `${UI.anyo(g.start_year)} – ${g.end_year === -1 || g.end_year === null ? 'en curso' : g.end_year}`,
           g.name || g.type || '—', g.attacking_nombre || '—', g.defending_nombre || '—',
         ]))) : null,
@@ -217,7 +217,7 @@ const Figuras = (() => {
           c.titular ? el('span', { class: 'enlace', text: c.titular, onclick: () => abrir(c.hfid) }) : '—',
         ]))) : null,
       e.miembros.length ? UI.bloque(`Miembros registrados (${e.miembros.length})`,
-        UI.tabla(['Nombre', 'Raza', 'Vinculo'], e.miembros.slice(0, 150).map((m) => [
+        UI.tabla(['Nombre', 'Raza', 'Vínculo'], e.miembros.slice(0, 150).map((m) => [
           el('span', { class: 'enlace', text: m.name || '?', onclick: () => abrir(m.hf_id) }),
           m.race || '—', (m.link_type || '') + (m.alive ? '' : ' (fallecido)'),
         ]))) : null,
@@ -236,10 +236,10 @@ const Figuras = (() => {
       }
       UI.poner(panel, el('div', {}, [
         el('div', { class: 'ficha-cabecera' }, [
-          el('h3', { text: 'Quien mato a quien' }),
+          el('h3', { text: 'Quién mato a quién' }),
           el('div', { class: 'tipo', text: 'Ranking por muertes registradas en el archivo de leyendas.' }),
         ]),
-        UI.tabla(['#', 'Figura', 'Raza', 'Muertes', 'Algunas victimas'],
+        UI.tabla(['#', 'Figura', 'Raza', 'Muertes', 'Algunas víctimas'],
           datos.matadores.map((m, i) => [
             String(i + 1),
             el('span', { class: 'enlace', text: m.name || `figura ${m.hf_id}`, onclick: () => abrir(m.hf_id) }),

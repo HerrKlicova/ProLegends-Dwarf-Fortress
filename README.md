@@ -121,6 +121,14 @@ Pasa solo al arrancar con `start.bat`. Desde la interfaz, el botón
 
 **No se pierde nada.** Las reglas son:
 
+- Los dos ficheros de un export se reconocen como pareja **aunque tengan
+  nombres distintos**: basta con que estén en la misma carpeta y sean de la
+  misma fecha. Esto pasa a menudo, porque al copiarlos o subirlos cada uno
+  puede acabar con una marca de tiempo distinta delante.
+- El mundo se decide **una vez por pareja**, mirando primero el fichero
+  principal. El `_plus` de DFHack anuncia el nombre traducido del mundo en vez
+  del interno, así que si cada fichero decidiese por su cuenta acabarían en
+  carpetas distintas.
 - Nunca se sobrescribe un fichero. Si el nombre nuevo ya estuviera cogido por
   otro fichero distinto, ese export se deja tal cual y te lo dice.
 - Nunca se borra nada.
@@ -276,6 +284,7 @@ tamaño del mundo ya están en `exports`).
 No hacen falta para el uso normal, pero están:
 
 ```
+python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
 python -m app.cli ordenar         renombra y ordena los XML de data/imports/
 python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
 python -m app.cli listar          muestra los mundos y exports importados
@@ -316,6 +325,11 @@ correcto` o listando lo que falla.
 - **Un export da error de XML corrupto**: la aplicación lo dice en pantalla y
   sigue con los demás. Vuelve a exportar las leyendas desde el juego.
 - **Quiero empezar de cero**: borra la carpeta `data/db/` y vuelve a arrancar.
+- **Aparecen mundos raros, o dice que falta el `_plus` estando ahí**: casi
+  siempre es que los dos ficheros del export llegaron con nombres distintos.
+  Ejecuta `python -m app.cli diagnostico`: dice, fichero a fichero, qué mundo
+  ha leído y qué parejas ha reconocido. Si los mundos duplicados vienen de
+  pruebas anteriores, borra `data/db/` y vuelve a importar.
 
 Los exports ya importados no se reprocesan: puedes dejar todos los ficheros en
 `data/imports/` sin miedo. Si vuelves a exportar la misma fecha del mismo mundo

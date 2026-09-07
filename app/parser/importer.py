@@ -4,7 +4,7 @@ Recorre el fichero principal y despues el _plus, fusionando por ID (los dos
 comparten los identificadores de entidad, sitio, figura y evento, pero cada uno
 trae campos distintos). Al terminar reconstruye lo que el XML no dice de forma
 explicita: la jerarquia de entidades y la propiedad de cada sitio a lo largo de
-los anyos.
+los años.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from .xmlstream import elem_to_dict, iter_sections, normalize_key
 
 BATCH = 2000
 
-# Secciones que se guardan en memoria durante toda la importacion porque son
+# Secciones que se guardan en memoria durante toda la importación porque son
 # pequenas y hacen falta enteras para reconstruir jerarquias y propiedad.
 SMALL_SECTIONS = {"sites", "entities", "artifacts", "regions", "underground_regions",
                   "entity_populations"}
@@ -106,7 +106,7 @@ class Importer:
 
     # ------------------------------------------------------ ciclo de vida
     def _create_export_row(self, fingerprint: str) -> int:
-        # Un mismo prefijo (<mundo>-<anyo>-<mes>-<dia>) identifica un export
+        # Un mismo prefijo (<mundo>-<anyo>-<mes>-<día>) identifica un export
         # concreto. Si se vuelve a exportar esa misma fecha con otro contenido,
         # sustituye al anterior en lugar de duplicarlo.
         self.conn.execute("DELETE FROM exports WHERE prefix = ?", (self.pair.prefix,))
@@ -515,7 +515,7 @@ class Importer:
             filas,
         )
 
-    # -------------------------------------------- volcado de lo pequeno
+    # -------------------------------------------- volcado de lo pequeño
     def _write_small_sections(self) -> None:
         self._write_sites()
         self._write_entities()
@@ -698,8 +698,33 @@ class Importer:
         self._count_kills()
         self._world_bounds()
 
+    def _nombre_del_mundo(self) -> tuple[Optional[str], Optional[str]]:
+        """Nombre del mundo, mirando tambien la cabecera de los dos ficheros.
+
+        Hay exports cuyo fichero principal no trae el nombre del mundo; en esos
+        casos lo pone el _plus de DFHack. Sin esta pasada el mundo acabaria
+        llamandose como el fichero, que no dice nada.
+        """
+        from . import organizer
+
+        nombre, altnombre = self.world_name or None, self.world_altname or None
+        if nombre and altnombre:
+            return nombre, altnombre
+        for fichero in (self.pair.main, self.pair.plus):
+            if fichero is None:
+                continue
+            cabecera = organizer.leer_cabecera(fichero)
+            nombre = nombre or cabecera.get("nombre")
+            altnombre = altnombre or cabecera.get("altnombre")
+            if nombre and altnombre:
+                break
+        return nombre, altnombre
+
     def _attach_world(self) -> None:
-        name = self.world_name or self.pair.file_token or self.pair.prefix
+        nombre, altnombre = self._nombre_del_mundo()
+        if altnombre:
+            self.world_altname = altnombre
+        name = nombre or self.pair.file_token or self.pair.prefix
         row = dbmod.one(self.conn, "SELECT id FROM worlds WHERE name = ?", (name,))
         if row:
             self.world_id = row["id"]
@@ -734,8 +759,8 @@ class Importer:
         )
 
     def _world_bounds(self) -> None:
-        # El tamano del mundo se DEDUCE de las coordenadas observadas; no se
-        # asume ninguno de los tamanos estandar de generacion.
+        # El tamaño del mundo se DEDUCE de las coordenadas observadas; no se
+        # asume ninguno de los tamanos estandar de generación.
         row = self.conn.execute(
             """SELECT MIN(coord_x) mnx, MIN(coord_y) mny, MAX(coord_x) mxx, MAX(coord_y) mxy
                  FROM sites WHERE export_id = ? AND coord_x IS NOT NULL""",

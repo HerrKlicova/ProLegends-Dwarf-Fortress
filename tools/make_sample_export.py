@@ -11,7 +11,7 @@ Ejemplos:
     # dos exports de un mundo pequenyo, con fortaleza nueva en el segundo
     python tools/make_sample_export.py
 
-    # un mundo distinto, mas grande
+    # un mundo distinto, más grande
     python tools/make_sample_export.py --mundo tegurxosal --token region4 --tam 129
 
     # una prueba de carga de unos 45 MB
@@ -26,7 +26,7 @@ import random
 from pathlib import Path
 
 # Bytes de control que DF mete dentro de los nombres. En CP437 el 0x0F es el
-# simbolo del sol de los objetos de calidad y el 0x0E una nota musical.
+# símbolo del sol de los objetos de calidad y el 0x0E una nota musical.
 SOL, NOTA, FLECHA = "\x0f", "\x0e", "\x1a"
 
 TIPOS_SITIO = ["town", "hamlet", "hillocks", "fortress", "dark fortress", "forest retreat",
@@ -56,7 +56,7 @@ def construir_mundo(args):
     rnd = random.Random(args.mundo)
     tam = args.tam
     anyo_final = args.anyo_final
-    n_sitios = args.sitios + 1          # el ultimo es la fortaleza del jugador
+    n_sitios = args.sitios + 1          # el último es la fortaleza del jugador
     n_civ = max(2, args.civilizaciones)
 
     entidades = []
@@ -352,7 +352,7 @@ def main() -> int:
     ap.add_argument("--guerras", type=int, default=6)
     ap.add_argument("--civilizaciones", type=int, default=5)
     ap.add_argument("--solo-uno", action="store_true",
-                    help="genera un unico export en lugar de dos fechas")
+                    help="genera un único export en lugar de dos fechas")
     ap.add_argument("--anyo-final", type=int, default=160, dest="anyo_final")
     args = ap.parse_args()
 

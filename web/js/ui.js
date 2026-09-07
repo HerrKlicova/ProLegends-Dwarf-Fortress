@@ -30,7 +30,7 @@ const UI = (() => {
   }
 
   /* Convierte 'site taken over' en 'Site taken over' legible sin inventar
-     traducciones que no estan en los datos. */
+     traducciones que no están en los datos. */
   function tipoLegible(tipo) {
     if (!tipo) return '';
     return tipo.charAt(0).toUpperCase() + tipo.slice(1).replace(/_/g, ' ');

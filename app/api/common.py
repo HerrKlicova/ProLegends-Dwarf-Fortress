@@ -122,7 +122,7 @@ def load_json(value: Optional[str]) -> dict:
 def get_export(conn: sqlite3.Connection, export_id: int) -> dict:
     row = dbmod.one(conn, "SELECT * FROM exports WHERE id = ?", (export_id,))
     if row is None:
-        raise NotFoundError(f"No existe el export numero {export_id}.")
+        raise NotFoundError(f"No existe el export número {export_id}.")
     if row["status"] != "ok":
         raise NotFoundError(
             f"El export '{row['prefix']}' no se importo correctamente.",
@@ -134,12 +134,12 @@ def get_export(conn: sqlite3.Connection, export_id: int) -> dict:
 def get_world(conn: sqlite3.Connection, world_id: int) -> dict:
     row = dbmod.one(conn, "SELECT * FROM worlds WHERE id = ?", (world_id,))
     if row is None:
-        raise NotFoundError(f"No existe el mundo numero {world_id}.")
+        raise NotFoundError(f"No existe el mundo número {world_id}.")
     return row
 
 
 def world_exports(conn: sqlite3.Connection, world_id: int) -> list[dict]:
-    """Exports correctos de un mundo, del mas antiguo al mas reciente."""
+    """Exports correctos de un mundo, del más antiguo al más reciente."""
     return dbmod.all_(
         conn,
         """SELECT * FROM exports WHERE world_id = ? AND status = 'ok'
@@ -152,7 +152,7 @@ def world_exports(conn: sqlite3.Connection, world_id: int) -> list[dict]:
 def latest_export(conn: sqlite3.Connection, world_id: int) -> dict:
     exports = world_exports(conn, world_id)
     if not exports:
-        raise NotFoundError("Ese mundo no tiene ningun export importado correctamente.")
+        raise NotFoundError("Ese mundo no tiene ningún export importado correctamente.")
     return exports[-1]
 
 

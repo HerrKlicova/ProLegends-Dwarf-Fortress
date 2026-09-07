@@ -37,7 +37,7 @@ const App = (() => {
     estado.mundos = datos.mundos;
 
     if (datos.fallidos && datos.fallidos.length) {
-      UI.aviso('Algun export no se pudo importar.',
+      UI.aviso('Algún export no se pudo importar.',
         datos.fallidos.map((f) => `${f.prefix}: ${f.message || 'motivo desconocido'}`).join(' | '));
     }
     if (!estado.mundos.length) {
@@ -66,7 +66,7 @@ const App = (() => {
     const sel = document.getElementById('sel-export');
     if (!m) { UI.poner(sel); return; }
     UI.poner(sel, ...m.exports.map((e) =>
-      el('option', { value: String(e.id), text: `anyo ${e.anyo ?? '?'} — ${e.prefix}` })));
+      el('option', { value: String(e.id), text: `año ${e.anyo ?? '?'} — ${e.prefix}` })));
     if (!m.exports.some((e) => e.id === estado.exportId)) {
       estado.exportId = m.exports[m.exports.length - 1].id;
     }
@@ -120,7 +120,7 @@ const App = (() => {
     await Mapa.abrirSitio(siteId);
   }
 
-  /* -------------------------------------------------------- importacion */
+  /* -------------------------------------------------------- importación */
   async function importar() {
     let pendientes;
     try { pendientes = await API.pendientes(); }
@@ -132,19 +132,19 @@ const App = (() => {
     const cuerpo = [
       el('p', { text: `Carpeta vigilada: ${pendientes.carpeta}` }),
       pendientes.exports.length
-        ? UI.tabla(['Export', 'Ficheros', 'Tamano', 'Estado'], pendientes.exports.map((p) => [
+        ? UI.tabla(['Export', 'Ficheros', 'Tamaño', 'Estado'], pendientes.exports.map((p) => [
             p.prefix,
             [p.principal, p.plus].filter(Boolean).join(' + ') || '—',
             `${p.tamano_mb} MB`,
             p.importado ? 'ya importado' : (p.completo ? 'pendiente' : 'pendiente (sin _plus)'),
           ]))
-        : el('p', { class: 'nota', text: 'No hay ningun export en esa carpeta. Copia ahi los ficheros que genera Dwarf Fortress.' }),
+        : el('p', { class: 'nota', text: 'No hay ningún export en esa carpeta. Copia ahí los ficheros que genera Dwarf Fortress.' }),
 
       orden.cambios.length ? el('div', { class: 'bloque' }, [
-        el('h4', { text: `Se ordenaran ${orden.cambios.length} export(s)` }),
+        el('h4', { text: `Se ordenarán ${orden.cambios.length} export(s)` }),
         el('label', { class: 'capa' }, [
           casillaOrdenar,
-          el('span', { text: 'Renombrar segun el mundo y la fecha, y repartir por carpetas' }),
+          el('span', { text: 'Renombrar según el mundo y la fecha, y repartir por carpetas' }),
         ]),
         el('div', { class: 'scroll' }, orden.cambios.map((g) => el('div', { class: 'novedad' }, [
           el('strong', { text: g.mundo || 'mundo desconocido' }),
@@ -154,11 +154,11 @@ const App = (() => {
           g.aviso ? el('div', { class: 'nota', text: g.aviso }) : null,
         ]))),
         el('p', { class: 'nota', text:
-          'No se sobrescribe ni se borra nada: si un nombre ya estuviera cogido, ese export se deja como esta.' }),
+          'No se sobrescribe ni se borra nada: si un nombre ya estuviera cogido, ese export se deja como está.' }),
       ]) : null,
 
       orden.bloqueados.length ? el('div', { class: 'alerta suave' }, [
-        el('strong', { text: 'Algun export no se puede ordenar: ' }),
+        el('strong', { text: 'Algún export no se puede ordenar: ' }),
         el('span', { text: orden.bloqueados.map((g) => g.aviso).filter(Boolean).join(' | ') }),
       ]) : null,
 
@@ -188,13 +188,13 @@ const App = (() => {
         return;
       }
       clearInterval(tic);
-      if (estadoImp.error) { UI.aviso('La importacion ha fallado.', estadoImp.error); return; }
+      if (estadoImp.error) { UI.aviso('La importación ha fallado.', estadoImp.error); return; }
       const r = estadoImp.resultado || {};
       const partes = [];
       if ((r.importados || []).length) partes.push(`${r.importados.length} importados`);
-      if ((r.omitidos || []).length) partes.push(`${r.omitidos.length} ya estaban`);
+      if ((r.omitidos || []).length) partes.push(`${r.omitidos.length} ya estában`);
       if ((r.errores || []).length) partes.push(`${r.errores.length} con error`);
-      UI.aviso('Importacion terminada.',
+      UI.aviso('Importación terminada.',
         partes.join(', ') + ((r.errores || []).length
           ? ' — ' + r.errores.map((x) => `${x.prefix}: ${x.error}`).join(' | ') : ''),
         (r.errores || []).length ? '' : 'ok');
@@ -205,8 +205,8 @@ const App = (() => {
   function sinDatos() {
     UI.poner(document.getElementById('sel-mundo'), el('option', { text: 'sin mundos' }));
     UI.poner(document.getElementById('sel-export'), el('option', { text: '—' }));
-    document.getElementById('subtitulo').textContent = 'Todavia no hay ningun mundo importado';
-    UI.aviso('No hay ningun mundo importado.',
+    document.getElementById('subtitulo').textContent = 'Todavía no hay ningún mundo importado';
+    UI.aviso('No hay ningún mundo importado.',
       'Copia los ficheros -legends.xml y -legends_plus.xml en la carpeta data/imports/ y pulsa "Importar exports".');
     UI.poner(document.getElementById('panel-sitio'),
       el('p', { class: 'vacio', text: 'Sin datos.' }));

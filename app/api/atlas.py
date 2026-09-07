@@ -68,7 +68,7 @@ def mapa(export_id: int, conn: sqlite3.Connection = Conn):
         )
     ]
 
-    # Facciones: entidades que poseen o han poseido algun sitio, mas sus raices.
+    # Facciones: entidades que poseen o han poseido algún sitio, más sus raíces.
     usadas = {p[2] for p in propiedad if p[2] is not None}
     usadas |= {s["propietario_actual"] for s in sitios if s["propietario_actual"] is not None}
     raices = {entidades[e]["root_id"] for e in usadas if e in entidades}
@@ -137,7 +137,7 @@ def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
     ids = [f["hf_id"] for f in figuras]
     rastro: dict[int, list] = {i: [] for i in ids}
     marcas_ids = ",".join("?" * len(ids))
-    # Dos consultas separadas en lugar de un OR: asi cada una usa su indice.
+    # Dos consultas separadas en lugar de un OR: así cada una usa su indice.
     for columna in ("hfid", "slayer_hfid"):
         # Ojo: el filtro de site_id se hace en Python. Si se pone en el SQL,
         # SQLite prefiere el indice por sitio y deja de usar el de figura.
@@ -150,7 +150,7 @@ def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
                 rastro[row["quien"]].append([row["year"], row["site_id"]])
     for lista in rastro.values():
         lista.sort(key=lambda par: par[0] if par[0] is not None else 0)
-    # Ademas, el sitio con el que la figura tiene vinculo explicito.
+    # Además, el sitio con el que la figura tiene vinculo explicito.
     for row in conn.execute(
         f"""SELECT hf_id, site_id FROM hf_site_links
              WHERE export_id = ? AND hf_id IN ({marcas_ids}) AND site_id IS NOT NULL""",
@@ -188,7 +188,7 @@ def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
         conn, "SELECT * FROM sites WHERE export_id = ? AND site_id = ?", (export_id, site_id)
     )
     if sitio is None:
-        raise NotFoundError(f"No hay ningun sitio con el numero {site_id} en este export.")
+        raise NotFoundError(f"No hay ningún sitio con el número {site_id} en este export.")
 
     entidades = entity_index(conn, export_id)
 
@@ -313,7 +313,7 @@ def ficha_entidad(export_id: int, entity_id: int, conn: sqlite3.Connection = Con
         conn, "SELECT * FROM entities WHERE export_id = ? AND entity_id = ?", (export_id, entity_id)
     )
     if ent is None:
-        raise NotFoundError(f"No hay ninguna entidad con el numero {entity_id}.")
+        raise NotFoundError(f"No hay ninguna entidad con el número {entity_id}.")
     entidades = entity_index(conn, export_id)
     hijos = dbmod.all_(
         conn,

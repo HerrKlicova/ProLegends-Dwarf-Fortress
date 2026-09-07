@@ -19,7 +19,7 @@ from .errors import ProLegendsError
 app = FastAPI(
     title="ProLegends",
     description="Explorador local del archivo de leyendas de Dwarf Fortress",
-    version="1.0.0",
+    version="1.0.2",
     docs_url="/api/docs",
     redoc_url=None,
 )

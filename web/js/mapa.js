@@ -8,7 +8,7 @@ const Mapa = (() => {
     { id: 'ruinas',       nombre: 'Ruinas',        color: '#6b625a' },
     { id: 'guarida',      nombre: 'Guaridas de bestias', color: '#b4573c' },
     { id: 'torre',        nombre: 'Torres y nigromantes', color: '#7d5ba6' },
-    { id: 'boveda',       nombre: 'Bovedas y sitios misteriosos', color: '#d9c74a' },
+    { id: 'boveda',       nombre: 'Bóvedas y sitios misteriosos', color: '#d9c74a' },
     { id: 'cueva',        nombre: 'Cuevas', color: '#7a6a52' },
     { id: 'tumba',        nombre: 'Tumbas', color: '#8a8f98' },
   ];
@@ -19,8 +19,8 @@ const Mapa = (() => {
   let faccionesApagadas = new Set();
   let verBestias = true;
   let historia = new Map();     // site_id -> [[anyo, propietario, estado], ...]
-  let colorFaccion = new Map(); // entity_id -> color de su civilizacion raiz
-  let raizDe = new Map();       // entity_id -> id de su civilizacion raiz
+  let colorFaccion = new Map(); // entity_id -> color de su civilizacion raíz
+  let raizDe = new Map();       // entity_id -> id de su civilizacion raíz
   let faccionPorId = new Map(); // entity_id -> faccion
   let posiciones = [];          // cache de lo dibujado, para el raton
   let reproduciendo = null;
@@ -116,8 +116,8 @@ const Mapa = (() => {
       if (raiz !== null && raiz !== undefined) cuenta.set(raiz, (cuenta.get(raiz) || 0) + 1);
     }
     civs.sort((a, b) => (cuenta.get(b.id) || 0) - (cuenta.get(a.id) || 0));
-    // Puede haber varias civilizaciones de la misma raza, asi que cada una se
-    // identifica por su nombre propio y la raza queda debajo, mas apagada.
+    // Puede haber varias civilizaciones de la misma raza, así que cada una se
+    // identifica por su nombre propio y la raza queda debajo, más apagada.
     UI.poner(caja, ...civs.map((f) => UI.el('div', {
       class: 'fila' + (faccionesApagadas.has(f.id) ? ' apagada' : ''),
       title: `${f.nombre}${f.raza ? ' · ' + f.raza : ''} — pulsa para ocultarla del mapa`,
@@ -133,7 +133,7 @@ const Mapa = (() => {
       ]),
       UI.el('span', { class: 'conteo', text: String(cuenta.get(f.id) || 0) }),
     ])));
-    if (!civs.length) UI.poner(caja, UI.el('p', { class: 'nota', text: 'Este export no trae informacion de civilizaciones.' }));
+    if (!civs.length) UI.poner(caja, UI.el('p', { class: 'nota', text: 'Este export no trae información de civilizaciones.' }));
   }
 
   /* ------------------------------------------------------------- dibujado */
@@ -229,10 +229,10 @@ const Mapa = (() => {
     const visibles = posiciones.filter((p) => p.tipo === 'sitio').length;
     document.getElementById('nota-mapa').textContent =
       `Mundo de ${ancho}x${alto} casillas deducido de las coordenadas. ` +
-      `${visibles} sitios visibles en el anyo ${anyo} de ${datos.sitios.length} en total.`;
+      `${visibles} sitios visibles en el año ${anyo} de ${datos.sitios.length} en total.`;
     const nBestias = posiciones.filter((p) => p.tipo === 'bestia').length;
     document.getElementById('nota-bestias').textContent = datos.bestias.length
-      ? `${nBestias} con paradero conocido en el anyo ${anyo} (de ${datos.bestias.length} registradas).`
+      ? `${nBestias} con paradero conocido en el año ${anyo} (de ${datos.bestias.length} registradas).`
       : 'Este export no registra bestias con paradero conocido.';
   }
 
@@ -342,14 +342,14 @@ const Mapa = (() => {
   function ficha(s) {
     const el = UI.el;
     const propietarios = s.propietarios.length
-      ? UI.tabla(['Anyo', 'Propietario', 'Estado'], s.propietarios.map((p) => [
+      ? UI.tabla(['Año', 'Propietario', 'Estado'], s.propietarios.map((p) => [
           String(p.anyo),
           p.entidad
             ? el('span', { class: 'enlace', text: p.entidad, onclick: () => App.verEntidad(p.entidad_id) })
-            : (p.estado === 'ruinas' ? 'sin duenyo' : '?'),
+            : (p.estado === 'ruinas' ? 'sin dueño' : '?'),
           p.estado + (p.origen === 'inicial' ? ' (dato del export, sin evento)' : ''),
         ]))
-      : el('p', { class: 'nota', text: 'El archivo no registra ningun cambio de propiedad de este sitio.' });
+      : el('p', { class: 'nota', text: 'El archivo no registra ningún cambio de propiedad de este sitio.' });
 
     return el('div', {}, [
       el('div', { class: 'ficha-cabecera' }, [
@@ -358,11 +358,11 @@ const Mapa = (() => {
       ]),
       UI.datos([
         ['Estado', s.estado],
-        ['Fundado', s.fundado === null ? null : `anyo ${s.fundado}`],
+        ['Fundado', s.fundado === null ? null : `año ${s.fundado}`],
         ['Propietario', s.propietario.nombre
           ? el('span', { class: 'enlace', text: s.propietario.nombre, onclick: () => App.verEntidad(s.propietario.id) })
           : null],
-        ['Civilizacion', s.civilizacion
+        ['Civilización', s.civilizacion
           ? el('span', { class: 'enlace', text: s.civilizacion.nombre, onclick: () => App.verEntidad(s.civilizacion.id) })
           : null],
       ]),
@@ -370,15 +370,15 @@ const Mapa = (() => {
       s.estructuras.length ? UI.bloque('Estructuras',
         el('div', { class: 'chips' }, s.estructuras.map((e) =>
           el('span', { class: 'chip', text: `${e.name || e.type || '?'}${e.type && e.name ? ' (' + e.type + ')' : ''}` })))) : null,
-      s.artefactos.length ? UI.bloque('Artefactos aqui',
+      s.artefactos.length ? UI.bloque('Artefactos aquí',
         el('div', { class: 'chips' }, s.artefactos.map((a) => el('span', { class: 'chip', text: a.name })))) : null,
       s.habitantes.length ? UI.bloque(`Figuras vinculadas (${s.habitantes.length})`,
-        UI.tabla(['Nombre', 'Raza', 'Vinculo'], s.habitantes.slice(0, 80).map((h) => [
+        UI.tabla(['Nombre', 'Raza', 'Vínculo'], s.habitantes.slice(0, 80).map((h) => [
           el('span', { class: 'enlace', text: h.name || '?', onclick: () => App.irAFigura(h.hf_id) }),
           h.race || '—', (h.link_type || '') + (h.alive ? '' : ' (fallecida)'),
         ]))) : null,
-      s.eventos.length ? UI.bloque(`Eventos ocurridos aqui (${s.eventos.length}${s.eventos_truncados ? '+' : ''})`,
-        UI.tabla(['Anyo', 'Suceso', 'Detalles'], s.eventos.map((ev) => [
+      s.eventos.length ? UI.bloque(`Eventos ocurridos aquí (${s.eventos.length}${s.eventos_truncados ? '+' : ''})`,
+        UI.tabla(['Año', 'Suceso', 'Detalles'], s.eventos.map((ev) => [
           String(UI.anyo(ev.anyo)), UI.tipoLegible(ev.tipo),
           el('span', { class: 'nota', text: [ev.hf, ev.asesino ? '→ ' + ev.asesino : '', UI.detallesTexto(ev.detalles)].filter(Boolean).join(' · ') }),
         ]))) : el('p', { class: 'nota', text: 'No hay eventos registrados en este sitio.' }),

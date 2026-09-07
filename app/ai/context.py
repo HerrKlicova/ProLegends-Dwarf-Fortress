@@ -1,7 +1,7 @@
 """Seleccion y compactado de los hechos que se le pasan a la IA.
 
 La regla es que la cronica no puede inventarse nada: aqui se recogen solo datos
-que estan de verdad en la base de datos, y se resumen en un texto corto para que
+que están de verdad en la base de datos, y se resumen en un texto corto para que
 la llamada a la API sea barata.
 """
 
@@ -110,7 +110,7 @@ def contexto_anyos(conn: sqlite3.Connection, export_id: int, desde: int, hasta: 
         (export_id, hasta, desde),
     )
     return {
-        "titulo": f"Cronica de los anyos {desde} a {hasta}",
+        "titulo": f"Crónica de los anyos {desde} a {hasta}",
         "hechos": _decorar(conn, export_id, filas),
         "eventos_totales": total,
         "eventos_incluidos": len(filas),
@@ -177,7 +177,7 @@ def contexto_fortaleza(conn: sqlite3.Connection, export_id: int, site_id: int) -
     )
     nombre = (resumen.get("sitio") or {}).get("nombre") or f"sitio {site_id}"
     return {
-        "titulo": f"Cronica de {nombre}",
+        "titulo": f"Crónica de {nombre}",
         "ficha": resumen.get("sitio"),
         "fundacion": resumen.get("fundacion"),
         "civilizacion": resumen.get("civilizacion"),
@@ -204,7 +204,7 @@ def construir(conn: sqlite3.Connection, export_id: int, ambito: dict) -> dict:
 
 def a_texto(contexto: dict) -> str:
     """Convierte el contexto en el bloque de datos que ve el modelo."""
-    lineas = [f"# {contexto.get('titulo', 'Cronica')}", ""]
+    lineas = [f"# {contexto.get('titulo', 'Crónica')}", ""]
     for clave in ("ficha", "civilizacion", "habitantes"):
         if contexto.get(clave):
             lineas.append(f"{clave}: {contexto[clave]}")
@@ -224,7 +224,7 @@ def a_texto(contexto: dict) -> str:
         lineas.append(f"recuento de tipos de evento: {contexto['tipos']}")
     if contexto.get("eventos_totales") is not None:
         lineas.append(
-            f"eventos totales en el ambito: {contexto['eventos_totales']} "
+            f"eventos totales en el ámbito: {contexto['eventos_totales']} "
             f"(se listan {contexto.get('eventos_incluidos', 0)})"
         )
     lineas.append("")

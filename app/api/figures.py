@@ -1,4 +1,4 @@
-"""Explorador de figuras historicas."""
+"""Explorador de figuras históricas."""
 
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ def buscar(
 
 @router.get("/exports/{export_id}/matadores")
 def matadores(export_id: int, limite: int = Query(50, le=500), conn: sqlite3.Connection = Conn):
-    """Quien mato a quien: ranking por muertes causadas."""
+    """Quién mato a quién: ranking por muertes causadas."""
     get_export(conn, export_id)
     filas = dbmod.all_(
         conn,
@@ -130,7 +130,7 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         (export_id, hf_id),
     )
     if fig is None:
-        raise NotFoundError(f"No hay ninguna figura historica con el numero {hf_id}.")
+        raise NotFoundError(f"No hay ninguna figura histórica con el número {hf_id}.")
 
     entidades = entity_index(conn, export_id)
 
@@ -230,7 +230,7 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
     )
 
     # Un OR entre dos columnas indexadas impide usar los indices: se piden por
-    # separado y se mezclan aqui.
+    # separado y se mezclan aquí.
     eventos_raw = _eventos_de_figura(conn, export_id, hf_id, limite_eventos)
     eventos = [event_payload(e) for e in eventos_raw]
     nombres_ev = hf_names(

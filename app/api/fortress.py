@@ -1,4 +1,4 @@
-"""Panel de MI fortaleza: deteccion, resumen, novedades y avisos."""
+"""Panel de MI fortaleza: detección, resumen, novedades y avisos."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def fortaleza(
     eleccion = F.resolve(conn, world_id)
     exports = world_exports(conn, world_id)
     if not exports:
-        raise NotFoundError("Ese mundo no tiene ningun export importado correctamente.")
+        raise NotFoundError("Ese mundo no tiene ningún export importado correctamente.")
 
     salida = {
         "mundo_id": world_id,
@@ -71,7 +71,7 @@ def elegir(world_id: int, payload: dict = Body(...), conn: sqlite3.Connection = 
     try:
         site_id = int(site_id)
     except (TypeError, ValueError):
-        raise ProLegendsError("El identificador de sitio no es un numero.")
+        raise ProLegendsError("El identificador de sitio no es un número.")
     F.choose(conn, world_id, site_id)
     return {"estado": "guardada", "site_id": site_id}
 
@@ -102,7 +102,7 @@ def comparar(
     if desde is None:
         posicion = ids.index(hasta)
         # El anterior al elegido; si el elegido es el primero, se compara con el
-        # siguiente, que es lo unico que tiene sentido.
+        # siguiente, que es lo único que tiene sentido.
         desde = ids[posicion - 1] if posicion > 0 else ids[1]
     if desde not in ids:
         raise NotFoundError("El export de partida no pertenece a este mundo.")

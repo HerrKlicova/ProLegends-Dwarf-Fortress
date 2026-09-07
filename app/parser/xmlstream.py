@@ -26,9 +26,9 @@ from xml.etree import ElementTree as ET
 from ..errors import CorruptXMLError
 
 # Traduccion de los bytes 0x00-0x1F a su glifo real en CP437.
-# Se conservan tabulador, salto de linea y retorno de carro porque son validos
-# en XML; el resto se convierte al simbolo Unicode equivalente para no perder
-# informacion de los nombres (DF los usa de verdad). El 0x00 se descarta.
+# Se conservan tabulador, salto de línea y retorno de carro porque son validos
+# en XML; el resto se convierte al símbolo Unicode equivalente para no perder
+# información de los nombres (DF los usa de verdad). El 0x00 se descarta.
 _C0_GLYPHS = {
     0x00: None,      # NUL: se elimina
     0x01: "☺",  # ☺
@@ -64,7 +64,7 @@ _C0_GLYPHS = {
     0x1F: "▼",  # ▼
 }
 
-# Tambien hay que neutralizar los caracteres prohibidos del rango C1 y el 0x7F
+# También hay que neutralizar los caracteres prohibidos del rango C1 y el 0x7F
 # que a veces se cuelan: en CP437 el 0x7F es la casita ⌂.
 _C0_GLYPHS[0x7F] = "⌂"  # ⌂
 
@@ -263,7 +263,7 @@ def iter_sections(
                 elif depth == 2:
                     name = normalize_key(elem.tag)
                     text = (elem.text or "").strip()
-                    # Un campo suelto de la raiz (<name>, <altname>) frente a una
+                    # Un campo suelto de la raíz (<name>, <altname>) frente a una
                     # seccion contenedora: la seccion ya ha soltado registros.
                     if not section_had_records and text:
                         yield name, None, text

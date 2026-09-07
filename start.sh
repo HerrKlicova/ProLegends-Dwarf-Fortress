@@ -2,6 +2,8 @@
 # Arranque para Linux y macOS. El equivalente de start.bat.
 set -e
 cd "$(dirname "$0")"
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
 
 echo
 echo " ================================================================"

@@ -1,4 +1,4 @@
-"""Deteccion y analisis de la fortaleza del jugador.
+"""Deteccion y análisis de la fortaleza del jugador.
 
 DF no marca en ninguna parte cual es "tu" fortaleza, asi que hay que deducirla:
 
@@ -7,7 +7,7 @@ DF no marca en ninguna parte cual es "tu" fortaleza, asi que hay que deducirla:
   - un sitio cuyo gobierno se creo en el anyo mas reciente del mundo.
 
 Si queda duda, se ofrece la lista de candidatos para elegir a mano una sola vez;
-la eleccion se guarda y manda por encima de la deteccion automatica.
+la eleccion se guarda y manda por encima de la detección automatica.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ def _exports(conn: sqlite3.Connection, world_id: int) -> list[dict]:
     )
 
 
-# --------------------------------------------------------------- deteccion
+# --------------------------------------------------------------- detección
 def candidates(conn: sqlite3.Connection, world_id: int) -> dict:
     exports = _exports(conn, world_id)
     if not exports:
@@ -83,7 +83,7 @@ def candidates(conn: sqlite3.Connection, world_id: int) -> dict:
             razones.append(f"no existia en el export anterior ({anterior['prefix']})")
         if ultima_fundacion is not None and sitio["founded_year"] == ultima_fundacion:
             puntos += 50
-            razones.append(f"su gobierno se creo en el anyo mas reciente ({ultima_fundacion})")
+            razones.append(f"su gobierno se creo en el anyo más reciente ({ultima_fundacion})")
         elif (
             ultima_fundacion is not None
             and sitio["founded_year"] is not None
@@ -93,7 +93,7 @@ def candidates(conn: sqlite3.Connection, world_id: int) -> dict:
             razones.append(f"fundado hace poco (anyo {sitio['founded_year']})")
         if puntos and sitio["state"] == L.STATE_RUINS:
             puntos -= 40
-            razones.append("esta en ruinas")
+            razones.append("está en ruinas")
         if puntos <= 0:
             continue
         marcados.append(
@@ -492,7 +492,7 @@ def alerts(
                 "civ_id": civ,
                 "en_guerra": en_guerra,
                 "motivo": "guerra activa" if en_guerra else (
-                    "civilizacion ajena" if civ is not None else "sitio sin duenyo conocido"
+                    "civilización ajena" if civ is not None else "sitio sin dueño conocido"
                 ),
             }
         )
