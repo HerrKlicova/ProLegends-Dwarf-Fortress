@@ -10,6 +10,58 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.3.1 — Actualizar deja de dar guerra
+
+*Tres arreglos, todos de cosas que estorbaban al actualizar.*
+
+**Arreglado: la interfaz se quedaba en la versión anterior**
+
+Al bajar la 1.3.0 y abrirla, seguía saliendo la ventana de importar de la
+versión vieja, sin el apartado *Desde Dwarf Fortress*. No era cosa tuya: el
+servidor no le decía nada al navegador sobre la caché, y el navegador, como la
+dirección es siempre la misma (`127.0.0.1`), reutilizaba el HTML y el
+JavaScript que ya tenía guardados.
+
+- Ahora la interfaz se sirve con `no-cache`: el navegador la sigue guardando,
+  pero pregunta antes de usarla. Si no ha cambiado, el servidor responde "sigue
+  igual" y no se transfiere nada. En local eso no cuesta nada.
+- Por si acaso vuelve a pasar (un navegador raro, un antivirus por medio), la
+  interfaz lleva escrita su propia versión y la compara con la del programa: si
+  no coinciden, sale un aviso que te dice literalmente que pulses Ctrl+F5, en
+  lugar de dejarte pensando que la actualización no ha hecho nada.
+- **La versión se ve ahora arriba, al lado del nombre**, para poder mirarla de
+  un vistazo.
+
+**Arreglado: importar tardaba de más**
+
+- Un export de 50 MB pasa de **32 a 9 segundos**. Los tuyos, que son algo más
+  pequeños, deberían quedarse por debajo de eso.
+- El motivo era tonto: las filas se escribían en tandas de 2000, pero cada
+  tanda se confirmaba por su cuenta. Confirmar 244 veces costaba más que
+  escribir. Ahora todo el volcado va en una sola operación.
+- De regalo, si una importación falla a mitad ya no quedan filas sueltas de un
+  export incompleto: o entra entero, o no entra nada.
+
+**Arreglado: tenías que mover tus cosas a mano en cada versión**
+
+Esto era lo más peligroso: bastaba con despistarse una vez para perder crónicas
+que habían costado dinero.
+
+- **Tus cosas ya no viven dentro de la carpeta del programa.** Ahora están en
+  `Documentos\ProLegends`: las crónicas, la base de datos, tu clave de la API,
+  los ajustes y los propios XML.
+- Eso significa que **bajar una versión nueva ya no requiere copiar nada**.
+  Descomprimes, doble clic, y ahí está todo: tus crónicas, tus mundos ya
+  importados (sin reimportar los 45 MB) y tu clave.
+- La mudanza se hace sola la primera vez que arrancas la 1.3.1. **Las crónicas
+  se copian, no se mueven**: las de la carpeta vieja se quedan de respaldo. Los
+  XML sí se mueven, porque pesan y no tiene sentido tenerlos por duplicado.
+- La carpeta del programa se puede borrar entera sin miedo.
+- Si prefieres tenerlo todo en otro sitio (un disco externo, un pincho), se
+  puede cambiar con la variable de entorno `PROLEGENDS_HOME`.
+
+---
+
 ## v1.3.0 — La aplicación va a buscar los exports al juego
 
 *Función nueva.*

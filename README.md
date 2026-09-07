@@ -46,15 +46,15 @@ arranca.
 
 ### Si más adelante bajas una versión nueva
 
-Descomprímela en una carpeta aparte y **copia a la carpeta nueva estas dos
-cosas de la vieja**, si las tienes:
+Descomprímela y doble clic. **No hay que copiar nada.**
 
-- el fichero `.env` (tu clave de la API)
-- **la carpeta `data/cronicas/`** (las crónicas generadas: es lo único que
-  cuesta dinero y no se puede recuperar gratis)
-- la carpeta `data/db/` (la base de datos, para no reimportar los 45 MB)
+Desde la 1.3.1 tus crónicas, tu clave, tus ajustes y tu base de datos viven en
+`Documentos\ProLegends`, fuera del programa, así que la versión nueva los
+encuentra sola y no hay que reimportar los 45 MB. La carpeta de la versión
+vieja se puede borrar entera.
 
-Los XML de `data/imports/` puedes copiarlos también, o volver a dejarlos ahí.
+(Si vienes de la 1.3.0 o anterior, la primera vez que arranques se traslada
+todo solo, y las crónicas se copian dejando las originales de respaldo.)
 
 ---
 
@@ -96,14 +96,39 @@ encarga de todo:
 - Si no lo encuentra, **Elegir la carpeta a mano** abre el diálogo de carpetas
   de Windows. También puedes pegar la ruta en la casilla.
 - Verás la lista de exports con su mundo, su año y su tamaño. Marcas los que
-  quieras y **Traer los marcados** los copia a `data/imports/`.
+  quieras y **Traer los marcados** los copia a tu carpeta de exports.
 - **Se copian, no se mueven**: los originales siguen en la carpeta del juego.
 - La carpeta se recuerda, así que esto se hace una sola vez. Queda apuntada en
   `data/ajustes.json`, que no sube a GitHub porque solo vale para tu ordenador.
 
 **Si prefieres hacerlo a mano**, sigue funcionando igual que siempre: copia los
-dos ficheros a `data/imports/` y pulsa **Importar exports**. Da igual cómo se
+dos ficheros a `Documentos\ProLegends\imports\` y pulsa **Importar exports**.
+Da igual cómo se
 llamen; la aplicación los ordena sola (ver abajo).
+
+### Dónde vive lo tuyo
+
+Tus cosas **no están dentro de la carpeta del programa**, sino aquí:
+
+```
+Documentos\ProLegends\
+├── imports/       los XML de leyendas
+├── db/            la base de datos (se regenera importando)
+├── cronicas/      las crónicas narradas, un fichero de texto cada una
+├── ajustes.json   dónde tienes Dwarf Fortress, cuál es tu fortaleza
+└── .env           tu clave de la API
+```
+
+Se hace así para que **bajar una versión nueva no te obligue a copiar nada**:
+descomprimes, doble clic, y ahí siguen tus crónicas, tus mundos ya importados y
+tu clave. La carpeta del programa se puede borrar entera sin perder nada.
+
+La primera vez que arrancas una versión 1.3.1 o posterior, lo que hubiera
+dentro del programa se traslada solo. Las crónicas **se copian**, así que las
+antiguas se quedan de respaldo donde estaban.
+
+Si prefieres tenerlo en otro sitio (un disco externo, un pincho USB), define la
+variable de entorno `PROLEGENDS_HOME` con la ruta que quieras.
 
 ### Recuperar el proyecto en otro ordenador
 
@@ -111,10 +136,10 @@ llamen; la aplicación los ordena sola (ver abajo).
 git clone https://github.com/HerrKlicova/ProLegends-Dwarf-Fortress.git
 ```
 
-Entra en la carpeta, copia ahí tu fichero `.env` (o duplica `.env.example` como
-`.env` y pega tu clave) y haz doble clic en `start.bat`. Los exports XML y la base
-de datos no viajan en el repositorio: vuelve a dejar los XML en `data/imports/` y
-la aplicación los reimporta sola.
+Entra en la carpeta y haz doble clic en `start.bat`. Si ese ordenador ya tenía
+ProLegends, no hay que hacer nada más: tus crónicas, tu clave y tus mundos están
+en `Documentos\ProLegends` y los encuentra solo. Si es un ordenador nuevo, pon
+tu clave en el `.env` y trae los exports desde la carpeta de Dwarf Fortress.
 
 Si no quieres saber nada de git, baja simplemente el ZIP del apartado
 **Descargar** de arriba: es exactamente lo mismo.
@@ -135,7 +160,7 @@ La aplicación lee el nombre real del mundo —está en los primeros bytes del X
 así que no hace falta leerse los 45 MB— y los deja así:
 
 ```
-data/imports/
+Documentos/ProLegends/imports/
 ├── momuzosith/
 │   ├── momuzosith-00101-07-24-legends.xml
 │   └── momuzosith-00101-07-24-legends_plus.xml
@@ -219,7 +244,7 @@ sin inventarse nada que no esté en los datos.
 
 - La clave se lee de `.env` (nunca está en el código). Copia `.env.example` a
   `.env` y pon ahí tu `ANTHROPIC_API_KEY`.
-- **Cada crónica se guarda como un fichero de texto** en `data/cronicas/<mundo>/`.
+- **Cada crónica se guarda como un fichero de texto** en `Documentos/ProLegends/cronicas/<mundo>/`.
   Se pueden leer con el Bloc de notas sin abrir el programa, y **no se pierden
   al borrar la base de datos**. La pestaña las agrupa por rangos de años,
   figuras históricas y lugares.
@@ -258,7 +283,7 @@ mismo mundo a la vez, y elegir en el desplegable de arriba.
 app/
   parser/      XML -> registros            (lo único que sabe de etiquetas XML)
     xmlstream.py   lectura tolerante y en streaming
-    discover.py    empareja los ficheros de data/imports/
+    discover.py    empareja los ficheros de la carpeta de exports
     organizer.py   renombra y ordena por mundo y fecha
     legends.py     extracción de campos
     importer.py    orquesta la importación a SQLite
@@ -270,14 +295,17 @@ app/
   ai/          crónicas narradas
   juego.py     encuentra la carpeta de Dwarf Fortress y trae sus exports
   ajustes.py   lo que la aplicación recuerda entre arranques
+  mudanza.py   traslada tus cosas fuera del programa la primera vez
   schema.sql   esquema de la base de datos
 web/           interfaz: HTML, CSS y JavaScript a pelo, sin compilar nada
-data/
-  imports/     tus XML (no van al repositorio)
-  db/          la base de datos generada (no va al repositorio)
-  cronicas/    las crónicas de IA, un fichero de texto por crónica
-  ajustes.json dónde tienes el juego y demás (solo vale en tu ordenador)
 tools/         utilidades sueltas
+
+Documentos/ProLegends/   (fuera del programa, para que sobreviva a las actualizaciones)
+  imports/     tus XML
+  db/          la base de datos generada
+  cronicas/    las crónicas de IA, un fichero de texto por crónica
+  ajustes.json dónde tienes el juego y demás
+  .env         tu clave de la API
 ```
 
 El flujo es siempre en un sentido: **parser → modelo de datos → API interna →
@@ -321,10 +349,10 @@ No hacen falta para el uso normal, pero están:
 
 ```
 python -m app.cli juego           busca Dwarf Fortress y enseña sus exports
-python -m app.cli juego --traer   copia a data/imports/ los que falten
+python -m app.cli juego --traer   copia a tu carpeta de exports los que falten
 python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
-python -m app.cli ordenar         renombra y ordena los XML de data/imports/
-python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
+python -m app.cli ordenar         renombra y ordena tus XML por mundo y fecha
+python -m app.cli importar        procesa los XML nuevos y vuelca a SQLite
 python -m app.cli listar          muestra los mundos y exports importados
 python -m app.cli servidor        arranca solo el servidor
 python -m app.cli reiniciar-bd    borra la base de datos (los XML no se tocan)
@@ -333,7 +361,7 @@ python -m app.cli reiniciar-bd    borra la base de datos (los XML no se tocan)
 Para probar sin tener a mano tus ficheros de 45 MB:
 
 ```
-python tools/make_sample_export.py data/imports
+python tools/make_sample_export.py "%USERPROFILE%\Documents\ProLegends\imports"
 ```
 
 genera dos exports de mentira de un mundo inventado, con las mismas trampas de
@@ -362,16 +390,17 @@ correcto` o listando lo que falla.
   *Add python.exe to PATH* durante la instalación.
 - **Un export da error de XML corrupto**: la aplicación lo dice en pantalla y
   sigue con los demás. Vuelve a exportar las leyendas desde el juego.
-- **Quiero empezar de cero**: borra la carpeta `data/db/` y vuelve a arrancar.
-  Las crónicas de `data/cronicas/` no se tocan.
+- **Quiero empezar de cero**: borra la carpeta `db/` de `Documentos\ProLegends`
+  y vuelve a arrancar. Las crónicas no se tocan.
 - **Aparecen mundos raros, o dice que falta el `_plus` estando ahí**: casi
   siempre es que los dos ficheros del export llegaron con nombres distintos.
   Ejecuta `python -m app.cli diagnostico`: dice, fichero a fichero, qué mundo
   ha leído y qué parejas ha reconocido. Si los mundos duplicados vienen de
-  pruebas anteriores, borra `data/db/` y vuelve a importar.
+  pruebas anteriores, borra la carpeta `db/` de `Documentos\ProLegends` y
+  vuelve a importar.
 
 Los exports ya importados no se reprocesan: puedes dejar todos los ficheros en
-`data/imports/` sin miedo. Si vuelves a exportar la misma fecha del mismo mundo
+tu carpeta de exports sin miedo. Si vuelves a exportar la misma fecha del mismo mundo
 con contenido distinto, el nuevo sustituye al anterior en lugar de duplicarlo.
 
 ### Sobre los ficheros sin pareja

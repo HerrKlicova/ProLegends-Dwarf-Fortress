@@ -59,12 +59,12 @@ if errorlevel 1 (
 )
 
 REM --- 4. Fichero de configuracion -----------------------------------
+REM Tus cosas (exports, base de datos, cronicas y clave) viven en
+REM Documentos\ProLegends, fuera de esta carpeta, para que actualizar
+REM ProLegends no te obligue a mover nada. La aplicacion se encarga.
 if not exist ".env" if exist ".env.example" (
   copy ".env.example" ".env" >nul
-  echo  Creado el fichero .env. Si quieres cronicas narradas, abrelo con
-  echo  el Bloc de notas y pon ahi tu clave de Anthropic.
 )
-if not exist "data\imports" mkdir "data\imports"
 
 REM --- 5. Ordenar y luego importar lo que haya nuevo ------------------
 echo.
@@ -72,7 +72,7 @@ echo  Ordenando los exports por mundo y fecha ...
 "%VPY%" -m app.cli ordenar --aplicar
 
 echo.
-echo  Buscando exports en data\imports ...
+echo  Buscando exports nuevos ...
 "%VPY%" -m app.cli importar
 
 REM --- 6. Servidor y navegador ---------------------------------------

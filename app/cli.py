@@ -371,6 +371,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    from . import mudanza
+
+    mudanza.migrar(log=print)
     try:
         return args.func(args)
     except ProLegendsError as exc:

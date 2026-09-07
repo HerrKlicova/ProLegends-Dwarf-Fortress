@@ -11,6 +11,7 @@ import sqlite3
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 
 from . import config, db as dbmod
 from .api import router as api_router
@@ -19,7 +20,7 @@ from .errors import ProLegendsError
 app = FastAPI(
     title="ProLegends",
     description="Explorador local del archivo de leyendas de Dwarf Fortress",
-    version="1.3.0",
+    version="1.3.1",
     docs_url="/api/docs",
     redoc_url=None,
 )
@@ -27,6 +28,9 @@ app = FastAPI(
 
 @app.on_event("startup")
 def _preparar() -> None:
+    from . import mudanza
+
+    mudanza.migrar(log=print)
     config.ensure_dirs()
     conn = dbmod.connect()
     try:
@@ -78,5 +82,22 @@ def salud():
     return {"estado": "ok", "version": app.version}
 
 
+class InterfazSiempreFresca(StaticFiles):
+    """Sirve la interfaz obligando al navegador a preguntar si ha cambiado.
+
+    Sin esto, el navegador se queda con el HTML y el JavaScript de la versión
+    anterior: como la dirección es siempre la misma (127.0.0.1), al actualizar
+    ProLegends seguías viendo la interfaz vieja hasta que caducase la caché.
+    Con 'no-cache' el navegador sigue guardándolo, pero pregunta antes de
+    usarlo; si no ha cambiado, el servidor responde "sigue igual" y no se
+    transfiere nada. En local eso no cuesta nada.
+    """
+
+    def file_response(self, *args, **kwargs) -> Response:
+        respuesta = super().file_response(*args, **kwargs)
+        respuesta.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return respuesta
+
+
 config.ensure_dirs()
-app.mount("/", StaticFiles(directory=str(config.WEB_DIR), html=True), name="web")
+app.mount("/", InterfazSiempreFresca(directory=str(config.WEB_DIR), html=True), name="web")

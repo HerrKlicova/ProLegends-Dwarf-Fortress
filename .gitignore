@@ -25,6 +25,8 @@ data/cronicas/
 
 # --- Ajustes locales de esta máquina ---
 # Dónde tienes instalado Dwarf Fortress y cosas así: solo valen en tu ordenador.
+# Desde la 1.3.1 esto vive en Documentos/ProLegends, fuera del repositorio; la
+# regla se queda por si queda algo de una versión anterior.
 data/ajustes.json
 
 # --- Base de datos generada (se regenera importando) ---

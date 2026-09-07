@@ -46,6 +46,8 @@ a { color: var(--acento); }
 .marca { display: flex; align-items: center; gap: .7rem; }
 .marca .sol { font-size: 1.9rem; color: var(--acento); line-height: 1; }
 .marca p { margin: 0; font-size: .78rem; color: var(--texto-suave); }
+.version { font-size: .7rem; font-weight: 400; color: var(--texto-suave);
+  letter-spacing: .04em; vertical-align: middle; }
 .selectores { display: flex; align-items: flex-end; gap: .6rem; flex-wrap: wrap; }
 .selectores label { display: flex; flex-direction: column; font-size: .7rem;
   text-transform: uppercase; letter-spacing: .07em; color: var(--texto-suave); gap: .2rem; }

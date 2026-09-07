@@ -1,6 +1,12 @@
 /* Arranque y coordinacion de vistas. */
 const App = (() => {
   const el = UI.el;
+
+  /* Versión de ESTA interfaz. El servidor dice la suya en /salud; si no
+     coinciden es que el navegador ha servido de su caché la interfaz de una
+     versión anterior, y hay que avisar en vez de dejar que parezca que la
+     actualización no ha hecho nada. */
+  const VERSION_INTERFAZ = '1.3.1';
   let estado = { mundos: [], mundoId: null, exportId: null, vista: 'mapa', cargadas: new Set() };
 
   const mundoId = () => estado.mundoId;
@@ -28,6 +34,18 @@ const App = (() => {
     });
     document.getElementById('btn-importar').addEventListener('click', importar);
     await recargarMundos(true);
+    await comprobarVersion();
+  }
+
+  async function comprobarVersion() {
+    let salud;
+    try { salud = await API.get('/salud'); } catch (e) { return; }
+    document.getElementById('version').textContent = 'v' + salud.version;
+    if (salud.version === VERSION_INTERFAZ) return;
+    UI.aviso(
+      `Estás viendo una interfaz antigua (la ${VERSION_INTERFAZ}); el programa es la ${salud.version}.`,
+      'La ha sacado el navegador de su memoria. Pulsa Ctrl+F5 (en Mac, Cmd+Shift+R) '
+      + 'para recargarla del todo y verás la versión nueva.');
   }
 
   async function recargarMundos(primeraVez) {

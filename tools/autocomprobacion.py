@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -248,6 +249,50 @@ def main() -> int:
         comprobar(len(pedidas) > 10,
                   f"se han revisado {len(pedidas)} rutas distintas")
 
+        # La interfaz lleva escrita su propia version para poder avisar cuando
+        # el navegador sirve de su cache una version anterior. Si ese numero se
+        # queda atras, el aviso saltaria siempre y dejaria de significar nada.
+        import app as paquete  # noqa: E402
+
+        en_js = re.search(r"VERSION_INTERFAZ\s*=\s*['\"]([\d.]+)", api_js + (
+            RAIZ / "web" / "js" / "app.js").read_text(encoding="utf-8"))
+        en_main = re.search(r'version="([\d.]+)"',
+                            (RAIZ / "app" / "main.py").read_text(encoding="utf-8"))
+        comprobar(en_js is not None and en_main is not None
+                  and en_js.group(1) == paquete.__version__ == en_main.group(1),
+                  f"la version coincide en los tres sitios: paquete {paquete.__version__}, "
+                  f"servidor {en_main and en_main.group(1)}, interfaz {en_js and en_js.group(1)}")
+
+        # Y el servidor tiene que pedirle al navegador que no se quede con la
+        # interfaz vieja. Sin esto, actualizar ProLegends parecia no hacer nada.
+        import socket  # noqa: E402
+        import urllib.request  # noqa: E402
+
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            puerto = s.getsockname()[1]
+        servidor = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app.main:app",
+             "--port", str(puerto), "--log-level", "critical"],
+            cwd=str(RAIZ), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        try:
+            cabeceras = {}
+            for _ in range(60):
+                try:
+                    with urllib.request.urlopen(
+                        f"http://127.0.0.1:{puerto}/js/app.js", timeout=2
+                    ) as r:
+                        cabeceras = {k.lower(): v for k, v in r.headers.items()}
+                    break
+                except OSError:
+                    time.sleep(0.4)
+            comprobar("no-cache" in cabeceras.get("cache-control", ""),
+                      f"la interfaz se sirve sin caché: {cabeceras.get('cache-control')!r}")
+        finally:
+            servidor.terminate()
+            servidor.wait(timeout=10)
+
         print("\n12. La clave de la API se lee pase lo que pase")
         from app import config as _config  # noqa: E402
 
@@ -462,6 +507,73 @@ def main() -> int:
             comprobar(juegomod.carpeta_recordada() is None, "y se puede olvidar")
         finally:
             cfg.DATA_DIR, cfg.IMPORTS_DIR = datos_reales, imports_reales
+
+        print("\n16. Tus cosas sobreviven a bajarse una versión nueva")
+        import os  # noqa: E402
+
+        from app import config as cfg2, mudanza  # noqa: E402
+
+        vieja = tmp / "ProLegends-version-anterior"
+        personal = tmp / "MisDocumentos" / "ProLegends"
+        (vieja / "data" / "cronicas" / "Ruspsmaksmo").mkdir(parents=True)
+        (vieja / "data" / "cronicas" / "Ruspsmaksmo" / "anyos-1-50.md").write_text(
+            "---\nmundo: Ruspsmaksmo\n---\nEn el año 1 nació Olngö.\n", encoding="utf-8")
+        (vieja / ".env").write_text("ANTHROPIC_API_KEY=sk-ant-api03-DEPRUEBA\n", encoding="utf-8")
+        (vieja / "data" / "ajustes.json").write_text('{"carpeta_df": "D:/Steam"}', encoding="utf-8")
+        (vieja / "data" / "imports").mkdir(parents=True)
+        generar(vieja / "data" / "imports", "--mundo", "Ruspsmaksmo", "--token", "region1",
+                "--solo-uno", "--anyo-final", "103")
+        (vieja / "data" / "db").mkdir(parents=True)
+        conn5 = dbmod.connect(vieja / "data" / "db" / "prolegends.db")
+        dbmod.init_db(conn5)
+        conn5.execute("INSERT INTO worlds(name, altname, created_at) "
+                      "VALUES ('Ruspsmaksmo', 'The Universe', '2026-01-01')")
+        conn5.close()
+
+        guardado = (cfg2.BASE_DIR, cfg2.DATA_DIR_ANTIGUA, cfg2.DATA_DIR,
+                    cfg2.IMPORTS_DIR, cfg2.DB_DIR, cfg2.DB_PATH,
+                    os.environ.get("PROLEGENDS_HOME"))
+        cfg2.BASE_DIR = vieja
+        cfg2.DATA_DIR_ANTIGUA = vieja / "data"
+        cfg2.DATA_DIR = personal
+        cfg2.IMPORTS_DIR = personal / "imports"
+        cfg2.DB_DIR = personal / "db"
+        cfg2.DB_PATH = personal / "db" / "prolegends.db"
+        os.environ["PROLEGENDS_HOME"] = str(personal)
+        try:
+            mudanza.migrar(log=lambda m: None)
+
+            cronica = personal / "cronicas" / "Ruspsmaksmo" / "anyos-1-50.md"
+            comprobar(cronica.exists() and "Olngö" in cronica.read_text(encoding="utf-8"),
+                      "las crónicas llegan a la carpeta personal, con sus acentos")
+            comprobar((vieja / "data" / "cronicas" / "Ruspsmaksmo" / "anyos-1-50.md").exists(),
+                      "y las originales se quedan de respaldo: no se borra nada")
+            comprobar("DEPRUEBA" in (personal / ".env").read_text(encoding="utf-8"),
+                      "la clave de la API viaja sola")
+            comprobar((personal / "ajustes.json").exists(), "los ajustes viajan")
+            conn6 = dbmod.connect(personal / "db" / "prolegends.db")
+            traido = conn6.execute("SELECT name FROM worlds").fetchone()
+            conn6.close()
+            comprobar(traido is not None and traido[0] == "Ruspsmaksmo",
+                      "la base de datos viaja entera: no hay que reimportar 45 MB")
+            movidos = sorted((personal / "imports").rglob("*.xml"))
+            comprobar(len(movidos) == 2, f"los exports se mueven ({len(movidos)} ficheros)")
+            comprobar(not list((vieja / "data" / "imports").rglob("*.xml")),
+                      "y no se quedan ocupando sitio por duplicado")
+            comprobar(mudanza.migrar(log=lambda m: None) == [],
+                      "a la segunda vez ya no hay nada que mover")
+            comprobar(cfg2.ruta_env() == vieja / ".env",
+                      "el .env de la carpeta del programa sigue mandando mientras tenga clave")
+            (vieja / ".env").write_text("ANTHROPIC_API_KEY=\n", encoding="utf-8")
+            comprobar(cfg2.clave_api().endswith("DEPRUEBA"),
+                      "y si ese se queda vacío, se usa el de la carpeta personal")
+        finally:
+            (cfg2.BASE_DIR, cfg2.DATA_DIR_ANTIGUA, cfg2.DATA_DIR, cfg2.IMPORTS_DIR,
+             cfg2.DB_DIR, cfg2.DB_PATH) = guardado[:6]
+            if guardado[6] is None:
+                os.environ.pop("PROLEGENDS_HOME", None)
+            else:
+                os.environ["PROLEGENDS_HOME"] = guardado[6]
 
         conn.close()
     finally:

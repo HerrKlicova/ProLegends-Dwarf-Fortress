@@ -30,16 +30,14 @@ echo " Comprobando dependencias..."
 
 if [ ! -f .env ] && [ -f .env.example ]; then
   cp .env.example .env
-  echo " Creado el fichero .env. Pon ahi tu clave si quieres cronicas narradas."
 fi
-mkdir -p data/imports
 
 echo
 echo " Ordenando los exports por mundo y fecha ..."
 "$VPY" -m app.cli ordenar --aplicar
 
 echo
-echo " Buscando exports en data/imports ..."
+echo " Buscando exports nuevos ..."
 "$VPY" -m app.cli importar
 
 echo

@@ -13,13 +13,50 @@ from pathlib import Path
 from typing import Optional
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+WEB_DIR = BASE_DIR / "web"
+SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
-DATA_DIR = BASE_DIR / "data"
+# Carpeta antigua: dentro del propio programa. Se sigue mirando para poder
+# rescatar lo que hubiera ahí de versiones anteriores.
+DATA_DIR_ANTIGUA = BASE_DIR / "data"
+
+
+def _documentos() -> Path:
+    """La carpeta de documentos del usuario, se llame como se llame."""
+    casa = Path.home()
+    for nombre in ("Documents", "Documentos"):
+        candidata = casa / nombre
+        if candidata.is_dir():
+            return candidata
+    # OneDrive se lleva a veces los documentos a un sitio propio.
+    for padre in (casa / "OneDrive", casa / "OneDrive - Personal"):
+        for nombre in ("Documents", "Documentos"):
+            if (padre / nombre).is_dir():
+                return padre / nombre
+    return casa
+
+
+def carpeta_personal() -> Path:
+    """Donde viven TUS cosas: exports, base de datos, crónicas y ajustes.
+
+    Va fuera de la carpeta del programa a propósito. Así, cuando bajas una
+    versión nueva de ProLegends, no tienes que mover nada: la carpeta del
+    programa se puede borrar entera y volver a bajar, que tus crónicas, tu
+    clave y tus mundos ya importados siguen donde estaban.
+
+    Se puede cambiar con la variable de entorno PROLEGENDS_HOME, por si
+    prefieres tenerlo todo en un pincho USB o en otro disco.
+    """
+    elegida = os.environ.get("PROLEGENDS_HOME", "").strip()
+    if elegida:
+        return Path(elegida).expanduser()
+    return _documentos() / "ProLegends"
+
+
+DATA_DIR = carpeta_personal()
 IMPORTS_DIR = DATA_DIR / "imports"
 DB_DIR = DATA_DIR / "db"
 DB_PATH = DB_DIR / "prolegends.db"
-WEB_DIR = BASE_DIR / "web"
-SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
 
 # El Bloc de notas de Windows tiene la costumbre de anadir .txt al guardar, y
@@ -28,14 +65,38 @@ _CODIFICACIONES = ("utf-8-sig", "utf-8", "utf-16", "utf-16-le", "latin-1")
 _NOMBRES_ERRONEOS = (".env.txt", ".env.text", "env", "env.txt", ".env.ini", ".env.cfg")
 
 
+def rutas_env() -> list[Path]:
+    """Dónde se busca el .env, por orden.
+
+    Primero el de la carpeta del programa, que es donde han estado siempre las
+    instrucciones; después el de tu carpeta personal, que es el que sobrevive a
+    las actualizaciones. Gana el primero que tenga una clave de verdad, así que
+    el .env vacío que crea start.bat no tapa al bueno.
+    """
+    return [BASE_DIR / ".env", carpeta_personal() / ".env"]
+
+
 def ruta_env() -> Path:
-    """El fichero de configuración del usuario."""
-    return BASE_DIR / ".env"
+    """El .env que se está usando ahora mismo."""
+    for candidata in rutas_env():
+        valores, _ = leer_env(candidata)
+        if valores.get("ANTHROPIC_API_KEY"):
+            return candidata
+    for candidata in rutas_env():
+        if candidata.exists():
+            return candidata
+    return rutas_env()[0]
 
 
 def env_mal_nombrados() -> list[Path]:
     """Ficheros que parecen un .env al que se le ha colado otro nombre."""
-    return [BASE_DIR / nombre for nombre in _NOMBRES_ERRONEOS if (BASE_DIR / nombre).exists()]
+    carpetas = (BASE_DIR, carpeta_personal())
+    return [
+        carpeta / nombre
+        for carpeta in carpetas
+        for nombre in _NOMBRES_ERRONEOS
+        if (carpeta / nombre).exists()
+    ]
 
 
 def leer_env(path: Optional[Path] = None) -> tuple[dict, str]:
@@ -87,10 +148,11 @@ def ajuste(nombre: str, por_defecto: str = "") -> str:
     la página en el navegador; no hace falta cerrar y volver a abrir start.bat.
     El .env manda sobre las variables de entorno del sistema.
     """
-    valores, _ = leer_env()
-    valor = valores.get(nombre)
-    if valor:
-        return valor
+    for candidata in rutas_env():
+        valores, _ = leer_env(candidata)
+        valor = valores.get(nombre)
+        if valor:
+            return valor
     return os.environ.get(nombre, por_defecto)
 
 
@@ -107,10 +169,11 @@ def _load_dotenv() -> None:
     Sirve para las herramientas que leen del entorno; los ajustes propios de la
     aplicación se consultan con ajuste(), que relee el fichero cada vez.
     """
-    valores, _ = leer_env()
-    for clave, valor in valores.items():
-        if clave not in os.environ:
-            os.environ[clave] = valor
+    for candidata in rutas_env():
+        valores, _ = leer_env(candidata)
+        for clave, valor in valores.items():
+            if valor and clave not in os.environ:
+                os.environ[clave] = valor
 
 
 _load_dotenv()
