@@ -87,7 +87,8 @@ def detalle_export(export_id: int, conn: sqlite3.Connection = Conn):
 
 
 # ------------------------------------------------------------- importacion
-def _run_import(prefijo: Optional[str]) -> None:
+def _run_import(prefijo: Optional[str], ordenar: bool = True) -> None:
+    from ..parser import organizer
     from ..parser.importer import import_all
 
     lineas: list[str] = []
@@ -102,6 +103,18 @@ def _run_import(prefijo: Optional[str]) -> None:
     conn = dbmod.connect()
     try:
         dbmod.init_db(conn)
+        if ordenar:
+            # Renombrar antes de importar: asi el export se registra ya con su
+            # nombre definitivo y no hay que reprocesarlo despues.
+            grupos, avisos = organizer.planificar(config.IMPORTS_DIR, conn=conn)
+            for aviso in avisos:
+                log(f"  [aviso] {aviso}")
+            pendientes = [g for g in grupos if g.cambia]
+            if pendientes:
+                log(f"Ordenando {len(pendientes)} export(s) por mundo y fecha...")
+                resultado_orden = organizer.aplicar(pendientes, conn=conn, log=log)
+                for fallo in resultado_orden["fallos"]:
+                    log(f"  [ERROR al ordenar] {fallo}")
         resultado = import_all(conn, verbose=True, log=log, only_prefix=prefijo)
         with _import_lock:
             _import_state["resultado"] = resultado
@@ -129,7 +142,9 @@ def importar(payload: dict = Body(default={})):
             return {"estado": "ya_en_marcha"}
         _import_state.update({"activo": True, "lineas": [], "resultado": None, "error": None})
     hilo = threading.Thread(
-        target=_run_import, args=(payload.get("prefijo"),), daemon=True
+        target=_run_import,
+        args=(payload.get("prefijo"), payload.get("ordenar", True)),
+        daemon=True,
     )
     hilo.start()
     return {"estado": "en_marcha", "carpeta": str(config.IMPORTS_DIR)}
@@ -143,7 +158,8 @@ def estado_importacion():
 
 @router.get("/importar/pendientes")
 def pendientes(conn: sqlite3.Connection = Conn):
-    """Que hay en data/imports/ y que falta por importar."""
+    """Que hay en data/imports/, que falta por importar y que se renombraria."""
+    from ..parser import organizer
     from ..parser.discover import discover
 
     pares, avisos = discover(config.IMPORTS_DIR)
@@ -164,4 +180,14 @@ def pendientes(conn: sqlite3.Connection = Conn):
                 "importado": bool(fila and fila["status"] == "ok"),
             }
         )
-    return {"carpeta": str(config.IMPORTS_DIR), "exports": salida, "avisos": avisos}
+    grupos, avisos_orden = organizer.planificar(config.IMPORTS_DIR, conn=conn)
+    return {
+        "carpeta": str(config.IMPORTS_DIR),
+        "exports": salida,
+        "avisos": avisos,
+        "orden": {
+            "cambios": [g for g in organizer.describir(grupos) if g["cambia"]],
+            "bloqueados": [g for g in organizer.describir(grupos) if not g["aplicable"]],
+            "avisos": avisos_orden,
+        },
+    }

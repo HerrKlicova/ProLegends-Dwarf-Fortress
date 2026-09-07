@@ -129,6 +129,55 @@ def main() -> int:
             comprobar("corrupto o incompleto" in r3["errores"][0]["error"],
                       f"con mensaje legible: \"{r3['errores'][0]['error']}\"")
 
+        print("\n8. Ordenacion automatica de los ficheros")
+        from app.parser import organizer  # noqa: E402
+
+        orden = tmp / "orden"
+        orden.mkdir()
+        generar(orden, "--mundo", "khazadum", "--token", "region1", "--solo-uno")
+        (orden / "notas.xml").write_text("<?xml version='1.0'?><otracosa/>", encoding="utf-8")
+
+        grupos, _ = organizer.planificar(orden)
+        pendientes = [g for g in grupos if g.cambia]
+        comprobar(len(pendientes) == 1, "detecta el export que hay que renombrar")
+        organizer.aplicar(pendientes)
+        esperado = orden / "khazadum" / "khazadum-00160-07-24-legends.xml"
+        comprobar(esperado.exists(),
+                  "renombra usando el nombre del mundo y lo mete en su carpeta")
+        comprobar((orden / "notas.xml").exists(),
+                  "un XML que no es de legends se queda donde estaba")
+        comprobar(not (orden / "region1-00160-07-24-legends.xml").exists(),
+                  "el fichero con el nombre feo ya no esta suelto")
+
+        # No se sobrescribe nada.
+        generar(orden, "--mundo", "khazadum", "--token", "region1", "--solo-uno")
+        antes = esperado.read_bytes()[:200]
+        grupos2, _ = organizer.planificar(orden)
+        organizer.aplicar([g for g in grupos2 if g.cambia])
+        comprobar(esperado.read_bytes()[:200] == antes,
+                  "si el destino ya existe, no se sobrescribe el fichero que habia")
+        comprobar((orden / "region1-00160-07-24-legends.xml").exists(),
+                  "y el que no se ha podido mover sigue donde estaba")
+
+        # Renombrar despues de importar no provoca una reimportacion.
+        print("\n9. Renombrar lo ya importado no obliga a reprocesar")
+        orden2 = tmp / "orden2"
+        orden2.mkdir()
+        generar(orden2, "--mundo", "erebor", "--token", "region8", "--solo-uno")
+        conn2 = dbmod.connect(tmp / "orden2.db")
+        dbmod.init_db(conn2)
+        r4 = import_all(conn2, imports_dir=orden2, verbose=False, log=lambda m: None)
+        comprobar(len(r4["importados"]) == 1, "se importa con el nombre feo")
+        g3, _ = organizer.planificar(orden2, conn=conn2)
+        organizer.aplicar([g for g in g3 if g.cambia], conn=conn2)
+        r5 = import_all(conn2, imports_dir=orden2, verbose=False, log=lambda m: None)
+        comprobar(len(r5["omitidos"]) == 1 and not r5["importados"],
+                  "tras renombrarlo, NO se vuelve a procesar")
+        fila = dbmod.one(conn2, "SELECT prefix FROM exports LIMIT 1")
+        comprobar(fila and fila["prefix"].startswith("erebor"),
+                  f"y la aplicacion ya lo llama por su nombre bonito: {fila['prefix']}")
+        conn2.close()
+
         conn.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

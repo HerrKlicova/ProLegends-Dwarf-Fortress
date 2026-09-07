@@ -62,7 +62,11 @@ if not exist ".env" if exist ".env.example" (
 )
 if not exist "data\imports" mkdir "data\imports"
 
-REM --- 5. Importar lo que haya nuevo ---------------------------------
+REM --- 5. Ordenar y luego importar lo que haya nuevo ------------------
+echo.
+echo  Ordenando los exports por mundo y fecha ...
+"%VPY%" -m app.cli ordenar --aplicar
+
 echo.
 echo  Buscando exports en data\imports ...
 "%VPY%" -m app.cli importar

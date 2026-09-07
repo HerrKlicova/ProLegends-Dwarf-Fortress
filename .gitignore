@@ -27,6 +27,11 @@ __pycache__/
 data/db/
 
 # --- Exports de legends (pesan decenas de MB, no van al repo) ---
+data/imports/**/*.xml
+data/imports/**/*.zip
+data/imports/**/*.bmp
+data/imports/**/*.png
+data/imports/**/*.txt
 data/imports/*.xml
 data/imports/*.zip
 data/imports/*.bmp

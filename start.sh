@@ -33,6 +33,10 @@ fi
 mkdir -p data/imports
 
 echo
+echo " Ordenando los exports por mundo y fecha ..."
+"$VPY" -m app.cli ordenar --aplicar
+
+echo
 echo " Buscando exports en data/imports ..."
 "$VPY" -m app.cli importar
 

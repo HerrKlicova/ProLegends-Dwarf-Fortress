@@ -1,5 +1,6 @@
 """Linea de comandos de ProLegends.
 
+    python -m app.cli ordenar         renombra y ordena los XML de data/imports/
     python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
     python -m app.cli listar          muestra mundos y exports ya importados
     python -m app.cli servidor        arranca el servidor web
@@ -34,6 +35,50 @@ def cmd_importar(args: argparse.Namespace) -> int:
     for err in resultado["errores"]:
         print(f"    - {err['prefix']}: {err['error']}")
     return 1 if resultado["errores"] else 0
+
+
+def cmd_ordenar(args: argparse.Namespace) -> int:
+    from .parser import organizer
+
+    with dbmod.session() as conn:
+        grupos, avisos = organizer.planificar(
+            config.IMPORTS_DIR, en_carpetas=not args.sin_carpetas, conn=conn
+        )
+        for aviso in avisos:
+            print(f"  [aviso] {aviso}")
+
+        pendientes = [g for g in grupos if g.cambia]
+        if not pendientes:
+            if grupos:
+                print("  Todo esta ya ordenado, no hay nada que renombrar.")
+            else:
+                print(f"  No hay ningun export en {config.IMPORTS_DIR}.")
+            return 0
+
+        print(f"\n  Se van a reorganizar {len(pendientes)} export(s):\n")
+        for grupo in pendientes:
+            cabecera = grupo.mundo or "mundo desconocido"
+            if grupo.fecha:
+                cabecera += f"  (anyo {grupo.fecha[0]})"
+            print(f"  # {cabecera}")
+            for mov in grupo.movimientos:
+                if mov.cambia:
+                    destino = mov.destino.relative_to(config.IMPORTS_DIR)
+                    print(f"      {mov.origen.name}\n        -> {destino}")
+            if grupo.aviso:
+                print(f"      nota: {grupo.aviso}")
+            print()
+
+        if not args.aplicar:
+            print("  Esto es solo una vista previa. Para hacerlo de verdad:")
+            print("      python -m app.cli ordenar --aplicar")
+            return 0
+
+        resultado = organizer.aplicar(pendientes, conn=conn, log=lambda m: None)
+        print(f"  Listo: {len(resultado['movidos'])} fichero(s) reorganizado(s).")
+        for fallo in resultado["fallos"]:
+            print(f"  [ERROR] {fallo}")
+        return 1 if resultado["fallos"] else 0
 
 
 def cmd_listar(_: argparse.Namespace) -> int:
@@ -124,6 +169,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_imp.add_argument("--prefijo", help="importar solo este export (ej. region1-00101-07-24)")
     p_imp.add_argument("--silencioso", action="store_true", help="sin barra de progreso")
     p_imp.set_defaults(func=cmd_importar)
+
+    p_ord = sub.add_parser(
+        "ordenar",
+        help="renombra los XML segun el mundo y la fecha, y los reparte por carpetas",
+    )
+    p_ord.add_argument("--aplicar", action="store_true",
+                       help="hacerlo de verdad (sin esto solo se muestra el plan)")
+    p_ord.add_argument("--sin-carpetas", action="store_true", dest="sin_carpetas",
+                       help="renombrar pero dejarlo todo en data/imports/")
+    p_ord.set_defaults(func=cmd_ordenar)
 
     p_lst = sub.add_parser("listar", help="mundos y exports ya importados")
     p_lst.set_defaults(func=cmd_listar)

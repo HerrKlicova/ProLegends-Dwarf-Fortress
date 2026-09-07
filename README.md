@@ -63,11 +63,13 @@ Los XML de `data/imports/` puedes copiarlos también, o volver a dejarlos ahí.
    region1-00101-07-24-legends_plus.xml    (el extra de DFHack, unos 13 MB)
    ```
 
+   Da igual cómo se llamen: la aplicación los ordena sola (ver abajo).
+
 2. **Doble clic en `start.bat`.**
 
 Eso es todo. La primera vez tarda un poco porque prepara el entorno de Python.
-Después: importa los exports nuevos (con barra de progreso), arranca el servidor
-y abre el navegador solo.
+Después: ordena los ficheros, importa los exports nuevos (con barra de
+progreso), arranca el servidor y abre el navegador solo.
 
 Deja abierta la ventana negra mientras uses la aplicación. Para cerrarla, ciérrala
 o pulsa `Ctrl+C`.
@@ -88,6 +90,52 @@ la aplicación los reimporta sola.
 
 Si no quieres saber nada de git, baja simplemente el ZIP del apartado
 **Descargar** de arriba: es exactamente lo mismo.
+
+---
+
+## Los ficheros se ordenan solos
+
+Dwarf Fortress nombra los exports con el nombre de la **carpeta de la partida**,
+que no dice nada:
+
+```
+region1-00101-07-24-legends.xml
+region4-00023-11-02-legends.xml
+```
+
+La aplicación lee el nombre real del mundo —está en los primeros bytes del XML,
+así que no hace falta leerse los 45 MB— y los deja así:
+
+```
+data/imports/
+├── momuzosith/
+│   ├── momuzosith-00101-07-24-legends.xml
+│   └── momuzosith-00101-07-24-legends_plus.xml
+└── tegurxosal/
+    ├── tegurxosal-00023-11-02-legends.xml
+    └── tegurxosal-00023-11-02-legends_plus.xml
+```
+
+Pasa solo al arrancar con `start.bat`. Desde la interfaz, el botón
+**Importar exports** te enseña antes qué va a renombrar y puedes desmarcarlo.
+
+**No se pierde nada.** Las reglas son:
+
+- Nunca se sobrescribe un fichero. Si el nombre nuevo ya estuviera cogido por
+  otro fichero distinto, ese export se deja tal cual y te lo dice.
+- Nunca se borra nada.
+- Los dos ficheros de un export se mueven juntos: o los dos, o ninguno.
+- Un `.xml` que no sea un export de legends no se toca.
+- Renombrar un export **ya importado no obliga a reprocesarlo**: la base de
+  datos se reapunta sola al nombre nuevo.
+
+También desde la terminal, si prefieres verlo antes:
+
+```
+python -m app.cli ordenar             enseña qué haría, sin tocar nada
+python -m app.cli ordenar --aplicar   lo hace
+python -m app.cli ordenar --aplicar --sin-carpetas   renombra sin crear carpetas
+```
 
 ---
 
@@ -171,6 +219,7 @@ app/
   parser/      XML -> registros            (lo único que sabe de etiquetas XML)
     xmlstream.py   lectura tolerante y en streaming
     discover.py    empareja los ficheros de data/imports/
+    organizer.py   renombra y ordena por mundo y fecha
     legends.py     extracción de campos
     importer.py    orquesta la importación a SQLite
   model/       lo que hay que deducir
@@ -227,6 +276,7 @@ tamaño del mundo ya están en `exports`).
 No hacen falta para el uso normal, pero están:
 
 ```
+python -m app.cli ordenar         renombra y ordena los XML de data/imports/
 python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
 python -m app.cli listar          muestra los mundos y exports importados
 python -m app.cli servidor        arranca solo el servidor
@@ -251,7 +301,8 @@ python tools/autocomprobacion.py
 
 Genera dos mundos, los importa, comprueba las trampas del formato, la jerarquía
 de entidades, la propiedad año a año, las consultas de la interfaz, el diff entre
-exports y el manejo de un XML corrupto. Termina diciendo `RESULTADO: todo
+exports, el manejo de un XML corrupto y que la ordenación de ficheros no pisa
+nada ni obliga a reimportar. Termina diciendo `RESULTADO: todo
 correcto` o listando lo que falla.
 
 ---

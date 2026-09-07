@@ -126,6 +126,9 @@ const App = (() => {
     try { pendientes = await API.pendientes(); }
     catch (e) { UI.fallo(e); return; }
 
+    const orden = pendientes.orden || { cambios: [], bloqueados: [], avisos: [] };
+    const casillaOrdenar = el('input', { type: 'checkbox', checked: 'checked' });
+
     const cuerpo = [
       el('p', { text: `Carpeta vigilada: ${pendientes.carpeta}` }),
       pendientes.exports.length
@@ -136,14 +139,41 @@ const App = (() => {
             p.importado ? 'ya importado' : (p.completo ? 'pendiente' : 'pendiente (sin _plus)'),
           ]))
         : el('p', { class: 'nota', text: 'No hay ningun export en esa carpeta. Copia ahi los ficheros que genera Dwarf Fortress.' }),
-      (pendientes.avisos || []).length
-        ? el('pre', { class: 'consola', text: pendientes.avisos.join('\n') }) : null,
+
+      orden.cambios.length ? el('div', { class: 'bloque' }, [
+        el('h4', { text: `Se ordenaran ${orden.cambios.length} export(s)` }),
+        el('label', { class: 'capa' }, [
+          casillaOrdenar,
+          el('span', { text: 'Renombrar segun el mundo y la fecha, y repartir por carpetas' }),
+        ]),
+        el('div', { class: 'scroll' }, orden.cambios.map((g) => el('div', { class: 'novedad' }, [
+          el('strong', { text: g.mundo || 'mundo desconocido' }),
+          g.fecha ? el('span', { text: `  ·  ${g.fecha}` }) : null,
+          ...g.ficheros.filter((f) => f.cambia).map((f) =>
+            el('div', { class: 'nota', text: `${f.de}  →  ${f.a}` })),
+          g.aviso ? el('div', { class: 'nota', text: g.aviso }) : null,
+        ]))),
+        el('p', { class: 'nota', text:
+          'No se sobrescribe ni se borra nada: si un nombre ya estuviera cogido, ese export se deja como esta.' }),
+      ]) : null,
+
+      orden.bloqueados.length ? el('div', { class: 'alerta suave' }, [
+        el('strong', { text: 'Algun export no se puede ordenar: ' }),
+        el('span', { text: orden.bloqueados.map((g) => g.aviso).filter(Boolean).join(' | ') }),
+      ]) : null,
+
+      (pendientes.avisos || []).concat(orden.avisos || []).length
+        ? el('pre', { class: 'consola',
+            text: (pendientes.avisos || []).concat(orden.avisos || []).join('\n') }) : null,
       el('p', { class: 'nota', text: 'Los exports ya importados se saltan solos. Un fichero de 45 MB puede tardar un par de minutos.' }),
     ];
-    const ok = await UI.confirmar('Importar exports', cuerpo, 'Importar ahora');
+    const titulo = orden.cambios.length ? 'Ordenar e importar exports' : 'Importar exports';
+    const ok = await UI.confirmar(titulo, cuerpo,
+      orden.cambios.length ? 'Ordenar e importar' : 'Importar ahora');
     if (!ok) return;
 
-    try { await API.importar(null); } catch (e) { UI.fallo(e); return; }
+    const ordenar = casillaOrdenar.checked;
+    try { await API.importar(null, ordenar); } catch (e) { UI.fallo(e); return; }
     UI.aviso('Importando... el detalle se ve en la ventana negra de start.bat.', '');
     seguirImportacion();
   }

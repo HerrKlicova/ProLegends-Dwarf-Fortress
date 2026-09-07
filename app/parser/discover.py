@@ -91,10 +91,12 @@ def discover(imports_dir: Path) -> tuple[list[ExportPair], list[str]]:
     if not imports_dir.exists():
         return [], [f"La carpeta {imports_dir} no existe."]
 
-    pairs: dict[str, ExportPair] = {}
+    pairs: dict[tuple, ExportPair] = {}
     otros: list[str] = []
 
-    for path in sorted(imports_dir.iterdir()):
+    # Se busca tambien dentro de subcarpetas, porque el organizador reparte los
+    # exports en una carpeta por mundo.
+    for path in sorted(imports_dir.rglob("*")):
         if not path.is_file():
             continue
         name = path.name
@@ -106,10 +108,13 @@ def discover(imports_dir: Path) -> tuple[list[ExportPair], list[str]]:
             slot = "main"
         else:
             if path.suffix.lower() == ".xml":
-                otros.append(name)
+                otros.append(str(path.relative_to(imports_dir)))
             continue
 
-        pair = pairs.get(prefix)
+        # Los dos ficheros de un export tienen que estar en la misma carpeta:
+        # asi dos mundos distintos no se mezclan aunque compartan prefijo.
+        clave = (str(path.parent), prefix)
+        pair = pairs.get(clave)
         if pair is None:
             token, year, month, day = _parse_prefix(prefix)
             pair = ExportPair(
@@ -119,7 +124,7 @@ def discover(imports_dir: Path) -> tuple[list[ExportPair], list[str]]:
                 game_month=month,
                 game_day=day,
             )
-            pairs[prefix] = pair
+            pairs[clave] = pair
         setattr(pair, slot, path)
 
     for name in otros:
