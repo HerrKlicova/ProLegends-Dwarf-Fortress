@@ -17,6 +17,7 @@ que entrega bytes UTF-8 ya saneados, apto para ``ElementTree.iterparse``.
 
 from __future__ import annotations
 
+import codecs
 import io
 import re
 from pathlib import Path
@@ -75,6 +76,51 @@ _TRANSLATION = {code: glyph for code, glyph in _C0_GLYPHS.items()}
 _BARE_AMP = re.compile(r"&(?!#[0-9]+;|#[xX][0-9A-Fa-f]+;|[A-Za-z][A-Za-z0-9._-]*;)")
 
 _XML_DECL = re.compile(r"^\s*<\?xml[^>]*\?>", re.IGNORECASE)
+_DECL_CODIFICACION = re.compile(rb"""encoding\s*=\s*['"]([\w.-]+)['"]""", re.IGNORECASE)
+
+# Cuánto se mira del principio del fichero para averiguar en qué está escrito.
+MUESTRA_CODIFICACION = 1 << 20  # 1 MiB
+
+
+def detectar_codificacion(path: Path) -> str:
+    """Averigua si el export está en UTF-8 o en CP437.
+
+    Dwarf Fortress escribió durante años en CP437, pero los exports actuales de
+    DFHack vienen en UTF-8 y lo declaran. Fiarse solo de la declaración es
+    arriesgado -hay ficheros que mienten-, así que se comprueba de verdad:
+
+    - Si en la muestra no hay ningún byte por encima de 127, da igual cuál se
+      elija: el resultado es el mismo.
+    - Si los hay y la muestra se decodifica como UTF-8 estricto, es UTF-8. Que
+      un texto CP437 de verdad forme por casualidad secuencias UTF-8 válidas es
+      practicamente imposible.
+    - En cualquier otro caso, CP437, que además nunca falla porque tiene los
+      256 bytes definidos.
+    """
+    try:
+        with open(path, "rb") as fh:
+            muestra = fh.read(MUESTRA_CODIFICACION)
+    except OSError:
+        return "cp437"
+
+    if not any(b > 0x7F for b in muestra):
+        declarada = _DECL_CODIFICACION.search(muestra[:200])
+        if declarada and declarada.group(1).lower().replace(b"-", b"") == b"utf8":
+            return "utf-8"
+        return "cp437"
+
+    # No cortar una secuencia multibyte por la mitad al final de la muestra.
+    recorte = muestra
+    for _ in range(4):
+        try:
+            recorte.decode("utf-8")
+            return "utf-8"
+        except UnicodeDecodeError as exc:
+            if exc.end >= len(recorte) - 3 and exc.start >= len(recorte) - 4:
+                recorte = recorte[: exc.start]
+                continue
+            return "cp437"
+    return "cp437"
 
 CHUNK_SIZE = 1 << 20  # 1 MiB
 
@@ -86,12 +132,17 @@ class SanitizedXMLStream(io.RawIOBase):
     megabytes en memoria por muy grande que sea el export.
     """
 
-    def __init__(self, path: Path, chunk_size: int = CHUNK_SIZE) -> None:
+    def __init__(self, path: Path, chunk_size: int = CHUNK_SIZE,
+                 codificacion: Optional[str] = None) -> None:
         self.path = Path(path)
         self.total_bytes = self.path.stat().st_size
         self.raw_bytes_read = 0
+        self.codificacion = codificacion or detectar_codificacion(self.path)
         self._fh = open(self.path, "rb")
         self._chunk_size = chunk_size
+        # Decodificador incremental: en UTF-8 un carácter puede quedar partido
+        # entre dos trozos, y hay que recordar los bytes sueltos.
+        self._decodificador = codecs.getincrementaldecoder(self.codificacion)("replace")
         self._buffer = b""
         self._carry = ""       # texto retenido por posible entidad partida
         self._first_chunk = True
@@ -132,7 +183,7 @@ class SanitizedXMLStream(io.RawIOBase):
         raw = self._fh.read(self._chunk_size)
         if not raw:
             self._eof = True
-            text = self._carry
+            text = self._carry + self._decodificador.decode(b"", True)
             self._carry = ""
             if text:
                 self._buffer += self._encode(text)
@@ -141,7 +192,7 @@ class SanitizedXMLStream(io.RawIOBase):
         self.raw_bytes_read += len(raw)
         if self._first_chunk and raw[:3] == b"\xef\xbb\xbf":
             raw = raw[3:]
-        text = raw.decode("cp437", errors="replace")
+        text = self._decodificador.decode(raw)
 
         if self._first_chunk:
             self._first_chunk = False

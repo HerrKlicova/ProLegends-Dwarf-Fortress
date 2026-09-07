@@ -356,6 +356,48 @@ def main() -> int:
         finally:
             almacen.config.DATA_DIR = carpeta_real
 
+        print("\n14. Se lee bien tanto UTF-8 como CP437")
+        from app.parser.xmlstream import SanitizedXMLStream, detectar_codificacion  # noqa: E402
+
+        # DFHack escribe los exports actuales en UTF-8; los antiguos, en CP437.
+        # Hay que acertar con los dos, y sin fiarse solo de lo que declaren.
+        NOMBRE = "Joñu Olngö Ngôrdax"
+        cuerpo = (
+            '<df_world>\n<name>mundoacentos</name>\n<altname>Tierra de Ñ</altname>\n'
+            f'<historical_figures><historical_figure><id>0</id><name>{NOMBRE}</name>'
+            '<race>DWARF</race></historical_figure></historical_figures>\n</df_world>\n'
+        )
+        acentos = tmp / "acentos"
+        acentos.mkdir()
+
+        en_utf8 = acentos / "utf8-00001-01-01-legends.xml"
+        en_utf8.write_bytes(
+            ('<?xml version="1.0" encoding=\'UTF-8\'?>\n' + cuerpo).encode("utf-8")
+        )
+        comprobar(detectar_codificacion(en_utf8) == "utf-8", "un export en UTF-8 se detecta como UTF-8")
+        flujo = SanitizedXMLStream(en_utf8)
+        leido = flujo.read().decode("utf-8"); flujo.close()
+        comprobar(NOMBRE in leido, f"y sus nombres se leen intactos: {NOMBRE}")
+
+        en_cp437 = acentos / "cp437-00001-01-01-legends.xml"
+        en_cp437.write_bytes(
+            ('<?xml version="1.0" encoding=\'CP437\'?>\n'
+             + cuerpo.replace(NOMBRE, "René \x0fMartillo\x0f")).encode("cp437", "replace")
+        )
+        comprobar(detectar_codificacion(en_cp437) == "cp437", "un export en CP437 se detecta como CP437")
+        flujo = SanitizedXMLStream(en_cp437)
+        leido = flujo.read().decode("utf-8"); flujo.close()
+        comprobar("René" in leido and "☼Martillo☼" in leido,
+                  "y conserva sus acentos y sus símbolos del sol")
+
+        # El caso peligroso: que el fichero mienta sobre su codificación.
+        mentiroso = acentos / "mentira-00001-01-01-legends.xml"
+        mentiroso.write_bytes(
+            ('<?xml version="1.0" encoding=\'CP437\'?>\n' + cuerpo).encode("utf-8")
+        )
+        comprobar(detectar_codificacion(mentiroso) == "utf-8",
+                  "si declara CP437 pero es UTF-8, se hace caso al contenido, no a la declaración")
+
         conn.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

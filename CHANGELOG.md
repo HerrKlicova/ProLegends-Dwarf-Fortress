@@ -10,6 +10,32 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.2.1 — Los nombres con acentos dejan de salir rotos
+
+*Arreglo.*
+
+Al analizar exports reales por primera vez apareció un fallo que llevaba ahí
+desde el principio.
+
+**Arreglado**
+
+- **Se detecta en qué está escrito el export en lugar de suponerlo.** Dwarf
+  Fortress escribió durante años en CP437, pero los exports actuales de DFHack
+  vienen en UTF-8. La aplicación daba CP437 por sentado, así que un nombre como
+  `Olngö Horrordrain` se guardaba como `Olng├╢ Horrordrain`. En un solo export
+  había 280 líneas afectadas.
+- La detección **no se fía de lo que el fichero declare**, porque los hay que
+  mienten: se comprueba el contenido. Si la muestra se decodifica como UTF-8
+  estricto y tiene caracteres especiales, es UTF-8; si no, CP437.
+- Se lee de forma incremental, de modo que un carácter partido entre dos trozos
+  del fichero no se pierde.
+
+**Si ya habías importado con la versión anterior**, borra `data/db/` y vuelve a
+importar para que los nombres se guarden bien. Las crónicas de `data/cronicas/`
+no se tocan.
+
+---
+
 ## v1.2.0 — Las crónicas se guardan aparte y ordenadas
 
 *Función nueva, y un arreglo importante.*
