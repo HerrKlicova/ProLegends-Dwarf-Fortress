@@ -12,22 +12,23 @@ las crónicas narradas, y solo cuando tú las pides expresamente.
 
 ## Descargar
 
-No hace falta saber nada de git ni instalar herramientas raras. Baja el ZIP y
-descomprímelo donde quieras:
+No hace falta saber nada de git ni instalar herramientas raras.
 
-**[⬇ Descargar la última versión (ZIP)](https://github.com/HerrKlicova/ProLegends-Dwarf-Fortress/archive/refs/heads/main.zip)**
+**[⬇ Descargar el proyecto (ZIP)](https://github.com/HerrKlicova/ProLegends-Dwarf-Fortress/archive/refs/heads/main.zip)**
 
-Es el mismo ZIP para Windows, macOS y Linux: no hay versiones distintas del
-programa, solo cambia el fichero con el que se arranca.
+Este repositorio es **privado**, así que el enlace te pedirá iniciar sesión en
+GitHub con la cuenta que lo creó. Es normal. Si prefieres no usar el enlace:
+entra en el repositorio, pulsa el botón verde **Code** y elige **Download ZIP**.
+
+Descomprime el ZIP donde quieras. Es el mismo para Windows, macOS y Linux: no
+hay versiones distintas del programa, solo cambia el fichero con el que se
+arranca.
 
 | Sistema | Fichero al que haces doble clic |
 |---|---|
 | Windows | `start.bat` |
 | macOS | `start.command` |
 | Linux | `start.sh` (o `bash start.sh` desde la terminal) |
-
-Si prefieres una versión concreta y no la última:
-[v1.0.0](https://github.com/HerrKlicova/ProLegends-Dwarf-Fortress/archive/refs/tags/v1.0.0.zip).
 
 ### Dos avisos de la primera vez
 
