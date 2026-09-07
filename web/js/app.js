@@ -121,55 +121,72 @@ const App = (() => {
   }
 
   /* -------------------------------------------------------- importación */
+  /* La ventana tiene dos partes: de dónde salen los ficheros (la carpeta de
+     Dwarf Fortress) y qué hay ya en data/imports esperando a procesarse. */
   async function importar() {
-    let pendientes;
-    try { pendientes = await API.pendientes(); }
-    catch (e) { UI.fallo(e); return; }
-
-    const orden = pendientes.orden || { cambios: [], bloqueados: [], avisos: [] };
+    const cajaImports = el('div', { class: 'bloque' });
     const casillaOrdenar = el('input', { type: 'checkbox', checked: 'checked' });
 
-    const cuerpo = [
-      el('p', { text: `Carpeta vigilada: ${pendientes.carpeta}` }),
-      pendientes.exports.length
-        ? UI.tabla(['Export', 'Ficheros', 'Tamaño', 'Estado'], pendientes.exports.map((p) => [
-            p.prefix,
-            [p.principal, p.plus].filter(Boolean).join(' + ') || '—',
-            `${p.tamano_mb} MB`,
-            p.importado ? 'ya importado' : (p.completo ? 'pendiente' : 'pendiente (sin _plus)'),
-          ]))
-        : el('p', { class: 'nota', text: 'No hay ningún export en esa carpeta. Copia ahí los ficheros que genera Dwarf Fortress.' }),
+    async function pintarImports() {
+      let pendientes;
+      try { pendientes = await API.pendientes(); }
+      catch (e) {
+        UI.poner(cajaImports, el('h4', { text: 'En data/imports' }),
+                 el('p', { class: 'nota', text: e.mensaje || 'no se ha podido consultar' }));
+        return;
+      }
+      const orden = pendientes.orden || { cambios: [], bloqueados: [], avisos: [] };
+      // Sin exports, el único aviso es "aquí no hay nada", que ya se dice arriba.
+      const sobrantes = pendientes.exports.length
+        ? [...new Set((pendientes.avisos || []).concat(orden.avisos || []))]
+        : [];
 
-      orden.cambios.length ? el('div', { class: 'bloque' }, [
-        el('h4', { text: `Se ordenarán ${orden.cambios.length} export(s)` }),
-        el('label', { class: 'capa' }, [
-          casillaOrdenar,
-          el('span', { text: 'Renombrar según el mundo y la fecha, y repartir por carpetas' }),
-        ]),
-        el('div', { class: 'scroll' }, orden.cambios.map((g) => el('div', { class: 'novedad' }, [
-          el('strong', { text: g.mundo || 'mundo desconocido' }),
-          g.fecha ? el('span', { text: `  ·  ${g.fecha}` }) : null,
-          ...g.ficheros.filter((f) => f.cambia).map((f) =>
-            el('div', { class: 'nota', text: `${f.de}  →  ${f.a}` })),
-          g.aviso ? el('div', { class: 'nota', text: g.aviso }) : null,
-        ]))),
+      UI.poner(cajaImports,
+        el('h4', { text: 'En data/imports' }),
+        el('p', { class: 'nota', text: pendientes.carpeta }),
+
+        pendientes.exports.length
+          ? UI.tabla(['Export', 'Ficheros', 'Tamaño', 'Estado'], pendientes.exports.map((p) => [
+              p.prefix,
+              [p.principal, p.plus].filter(Boolean).join(' + ') || '—',
+              `${p.tamano_mb} MB`,
+              p.importado ? 'ya importado' : (p.completo ? 'pendiente' : 'pendiente (sin _plus)'),
+            ]))
+          : el('p', { class: 'nota', text:
+              'Aquí no hay nada todavía. Trae un export desde la carpeta del juego, ' +
+              'o copia a mano los ficheros -legends.xml y -legends_plus.xml.' }),
+
+        orden.cambios.length ? el('div', { class: 'bloque' }, [
+          el('h4', { text: `Se ordenarán ${orden.cambios.length} export(s)` }),
+          el('label', { class: 'capa' }, [
+            casillaOrdenar,
+            el('span', { text: 'Renombrar según el mundo y la fecha, y repartir por carpetas' }),
+          ]),
+          el('div', { class: 'scroll' }, orden.cambios.map((g) => el('div', { class: 'novedad' }, [
+            el('strong', { text: g.mundo || 'mundo desconocido' }),
+            g.fecha ? el('span', { text: `  ·  ${g.fecha}` }) : null,
+            ...g.ficheros.filter((f) => f.cambia).map((f) =>
+              el('div', { class: 'nota', text: `${f.de}  →  ${f.a}` })),
+            g.aviso ? el('div', { class: 'nota', text: g.aviso }) : null,
+          ]))),
+          el('p', { class: 'nota', text:
+            'No se sobrescribe ni se borra nada: si un nombre ya estuviera cogido, ese export se deja como está.' }),
+        ]) : null,
+
+        orden.bloqueados.length ? el('div', { class: 'alerta suave' }, [
+          el('strong', { text: 'Algún export no se puede ordenar: ' }),
+          el('span', { text: orden.bloqueados.map((g) => g.aviso).filter(Boolean).join(' | ') }),
+        ]) : null,
+
+        sobrantes.length ? el('pre', { class: 'consola', text: sobrantes.join('\n') }) : null,
         el('p', { class: 'nota', text:
-          'No se sobrescribe ni se borra nada: si un nombre ya estuviera cogido, ese export se deja como está.' }),
-      ]) : null,
+          'Los exports ya importados se saltan solos. Un fichero de 45 MB puede tardar un par de minutos.' }),
+      );
+    }
 
-      orden.bloqueados.length ? el('div', { class: 'alerta suave' }, [
-        el('strong', { text: 'Algún export no se puede ordenar: ' }),
-        el('span', { text: orden.bloqueados.map((g) => g.aviso).filter(Boolean).join(' | ') }),
-      ]) : null,
-
-      (pendientes.avisos || []).concat(orden.avisos || []).length
-        ? el('pre', { class: 'consola',
-            text: (pendientes.avisos || []).concat(orden.avisos || []).join('\n') }) : null,
-      el('p', { class: 'nota', text: 'Los exports ya importados se saltan solos. Un fichero de 45 MB puede tardar un par de minutos.' }),
-    ];
-    const titulo = orden.cambios.length ? 'Ordenar e importar exports' : 'Importar exports';
-    const ok = await UI.confirmar(titulo, cuerpo,
-      orden.cambios.length ? 'Ordenar e importar' : 'Importar ahora');
+    await pintarImports();
+    const cuerpo = [Juego.bloque(pintarImports), cajaImports];
+    const ok = await UI.confirmar('Traer e importar exports', cuerpo, 'Importar ahora');
     if (!ok) return;
 
     const ordenar = casillaOrdenar.checked;
@@ -207,7 +224,8 @@ const App = (() => {
     UI.poner(document.getElementById('sel-export'), el('option', { text: '—' }));
     document.getElementById('subtitulo').textContent = 'Todavía no hay ningún mundo importado';
     UI.aviso('No hay ningún mundo importado.',
-      'Copia los ficheros -legends.xml y -legends_plus.xml en la carpeta data/imports/ y pulsa "Importar exports".');
+      'Pulsa "Importar exports": desde ahí puedes traerlos directamente de la carpeta '
+      + 'de Dwarf Fortress, o copiarlos tú a data/imports/.');
     UI.poner(document.getElementById('panel-sitio'),
       el('p', { class: 'vacio', text: 'Sin datos.' }));
   }
