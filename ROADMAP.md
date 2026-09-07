@@ -44,7 +44,8 @@ Lo que hay que averiguar:
 |---|---|
 | ¿Las regiones traen `<coords>` con la lista de casillas? | Si sí, se puede pintar el mapa de biomas nosotros mismos, sin depender de ficheros externos |
 | ¿Hay `landmasses`, `rivers`, `mountain_peaks`? | Son las costas, los ríos y las montañas: la diferencia entre un mapa y una cuadrícula de puntos |
-| ¿Qué `.bmp` exporta tu Dwarf Fortress y dónde? | Es el mapa que dibuja el propio juego; usarlo como fondo es la mayor fidelidad posible por el menor esfuerzo |
+| ¿Hay `world_constructions` (caminos, puentes, túneles)? | Son las carreteras del mundo: dan mucha vida a un atlas |
+| ¿Qué `.bmp` exporta tu Dwarf Fortress y dónde? | No para usarlo de fondo, sino como **referencia de estilo**: ver cómo dibuja DF sus biomas y su relieve, y de paso saber qué nombres de fichero busca la detección automática de v1.3 |
 
 **Trabajo:** ampliar `diagnostico` con un apartado de geografía que liste qué
 secciones y qué campos hay. Es media hora, y de su resultado depende cuál de
@@ -129,13 +130,37 @@ importa: sitios, propietarios, deslizador de año.
 - **Relieve**: sombreado a partir del mapa de elevación, si lo hay.
 - **Ríos y costas** dibujados como líneas, no como píxeles sueltos.
 
-**Qué hay que decidir contigo.** El estilo: ¿atlas de pergamino, con serifas y
-tonos tierra? ¿O limpio y oscuro como ahora? Se puede hacer que sea conmutable,
-pero conviene elegir uno como principal.
+**Estilo: decidido — atlas de pergamino.**
 
-**Riesgos.** El camino A depende de que tengas los `.bmp`; el B, de que tu XML
-traiga coordenadas de región. Si fallan los dos, el mapa mejora igual (iconos,
-zoom, etiquetas) pero sin terreno de fondo. **Por eso el Paso 0 va antes.**
+Papel envejecido, tonos tierra, tipografía con serifas. El mar en azul grisáceo
+pálido con la costa rayada, como en las cartas antiguas. La tierra de crema a
+ocre según la altura. Las montañas **dibujadas como montañas**, no como manchas
+de color; los bosques como grupitos de árboles; los desiertos punteados. Los
+sitios, como sellos de tinta con silueta propia y un pequeño halo para que se
+lean sobre cualquier terreno. Rosa de los vientos, escala, marco y leyenda.
+
+El deslizador de año encaja de maravilla con esto: cada año es *otra edición del
+mismo atlas*, redibujada por el cartógrafo.
+
+**Y una ventaja de haber elegido este estilo:** un atlas dibujado a mano
+**perdona los huecos** mucho mejor que una copia fotográfica. Si solo sabemos
+que cierta región es un bosque y anda por cierta zona, se dibujan unos árboles
+ahí y queda bien. Si intentásemos calcar el mapa píxel a píxel, cada dato que
+faltase se vería como un agujero. Esto juega a favor del objetivo de abajo.
+
+**Objetivo: que no haga falta nada externo.** El camino ideal es el **B**: que
+el mapa salga solo de los XML que ya importas, sin pedirte que exportes mapas
+detallados ni que copies imágenes. Es más trabajo, pero es lo que convierte esto
+en un programa que funciona solo. El camino A queda como mejora opcional para
+quien tenga los `.bmp`, no como requisito.
+
+**Riesgos.** El camino B depende de que tu `legends_plus.xml` traiga las
+coordenadas de las regiones. Si no las trae, hay un límite claro que conviene
+decir por adelantado: **no se inventará geografía**. Sin datos de costa no se
+dibujará una costa falsa; el mapa sería entonces un atlas más abstracto, con lo
+que sí sabemos (sitios, montañas y ríos con nombre, territorios) sobre un fondo
+liso de pergamino. Sigue siendo bonito, pero no es lo mismo. **Por eso el Paso 0
+va antes.**
 
 **Tamaño.** Grande. Dos o tres sesiones.
 
