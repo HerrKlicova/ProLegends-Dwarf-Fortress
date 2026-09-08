@@ -25,18 +25,18 @@ const Atlas = (() => {
   const BIOMAS = [
     { clave: 'glacier',   color: '#eef2f4', motivo: 'hielo'    },
     { clave: 'tundra',    color: '#d5dbcd', motivo: 'puntitos' },
-    { clave: 'mountain',  color: '#c4b498', motivo: 'montanya' },
-    { clave: 'hill',      color: '#cec09a', motivo: 'loma'     },
-    { clave: 'jungle',    color: '#96ad6f', motivo: 'selva'    },
-    { clave: 'forest',    color: '#aebe84', motivo: 'bosque'   },
-    { clave: 'wetland',   color: '#b7c395', motivo: 'junco'    },
-    { clave: 'marsh',     color: '#b7c395', motivo: 'junco'    },
-    { clave: 'swamp',     color: '#aebb8b', motivo: 'junco'    },
-    { clave: 'grassland', color: '#cdd097', motivo: 'hierba'   },
+    { clave: 'mountain',  color: '#bdb09a', motivo: 'montanya' },
+    { clave: 'hill',      color: '#c9bd8f', motivo: 'loma'     },
+    { clave: 'jungle',    color: '#83a259', motivo: 'selva'    },
+    { clave: 'forest',    color: '#9cb26e', motivo: 'bosque'   },
+    { clave: 'wetland',   color: '#adbd8a', motivo: 'junco'    },
+    { clave: 'marsh',     color: '#adbd8a', motivo: 'junco'    },
+    { clave: 'swamp',     color: '#a3b47e', motivo: 'junco'    },
+    { clave: 'grassland', color: '#c8ce8c', motivo: 'hierba'   },
     { clave: 'savanna',   color: '#dbcf8d', motivo: 'hierba'   },
     { clave: 'steppe',    color: '#d8cd93', motivo: 'mata'     },
     { clave: 'shrubland', color: '#cfc890', motivo: 'mata'     },
-    { clave: 'desert',    color: '#ecdda1', motivo: 'duna'     },
+    { clave: 'desert',    color: '#eddc96', motivo: 'duna'     },
     { clave: 'badland',   color: '#dcc79a', motivo: 'duna'     },
     { clave: 'lake',      color: '#c2d4dd', motivo: 'agua'     },
     { clave: 'ocean',     color: '#b9cdd8', motivo: 'agua'     },
@@ -48,6 +48,14 @@ const Atlas = (() => {
   let clasificado = null;   // por índice de bioma: {agua, color, motivo}
   let cache = null;         // { clave, lienzo }
   let porQueNo = '';        // por qué este export no se puede dibujar
+  // Qué capas del terreno se dibujan. Cambiarlas obliga a repintar el mapa.
+  const opciones = { rios: true, construcciones: true, motivos: true };
+
+  function opcion(nombre, valor) {
+    if (opciones[nombre] === valor) return;
+    opciones[nombre] = valor;
+    cache = null;
+  }
 
   function preparar(terreno) {
     datos = terreno && terreno.hay_mapa ? terreno : null;
@@ -101,7 +109,8 @@ const Atlas = (() => {
 
   /* --------------------------------------------------- lienzo del terreno */
   function capa(anchoPx, altoPx, geom) {
-    const clave = `${anchoPx}x${altoPx}|${geom.celda.toFixed(3)}|${geom.offX.toFixed(1)}`;
+    const clave = `${anchoPx}x${altoPx}|${geom.celda.toFixed(3)}|${geom.offX.toFixed(1)}`
+      + `|${opciones.rios}${opciones.construcciones}${opciones.motivos}`;
     if (cache && cache.clave === clave) return cache.lienzo;
     const lienzo = document.createElement('canvas');
     lienzo.width = anchoPx;
@@ -196,6 +205,14 @@ const Atlas = (() => {
         ctx.rect(px(x) - 0.4, py(y) - 0.4, celda + 0.8, celda + 0.8);
       }
       ctx.fill();
+      // Y una sombra distinta en cada casilla: un terreno pintado a mano no es
+      // una plancha de color uniforme.
+      for (const [x, y] of casillas) {
+        const v = azar(x, y, 21);
+        if (v < 0.62) continue;
+        ctx.fillStyle = v > 0.84 ? 'rgba(90,75,45,.055)' : 'rgba(255,250,225,.06)';
+        ctx.fillRect(px(x) - 0.4, py(y) - 0.4, celda + 0.8, celda + 0.8);
+      }
     }
 
     // 4. Lagos: agua interior, con su propio tono y su borde.
@@ -217,11 +234,13 @@ const Atlas = (() => {
     }
 
     // 5. Los motivos: montañas dibujadas como montañas, bosques como árboles.
-    if (celda >= 5) motivos(ctx, tipo, esAgua, ancho, celda, pluma, px, py, desde);
+    if (celda >= 5 && opciones.motivos) {
+      motivos(ctx, tipo, esAgua, ancho, celda, pluma, px, py, desde);
+    }
 
     // 6. Ríos y calzadas.
-    rios(ctx, geom, pluma);
-    construcciones(ctx, geom, pluma);
+    if (opciones.rios) rios(ctx, geom, pluma);
+    if (opciones.construcciones) construcciones(ctx, geom, pluma);
 
     // 7. La línea de costa, en tinta, por encima de todo lo del terreno.
     ctx.strokeStyle = TINTA;
@@ -310,22 +329,29 @@ const Atlas = (() => {
     const salta = azar(x, y, 3);
     switch (cual) {
       case 'montanya': {
-        ctx.fillStyle = '#b3a486';
+        // Dos cumbres por casilla, una detrás de otra: se leen como una
+        // cordillera en vez de como triángulos sueltos.
+        const cumbres = salta > 0.45
+          ? [[-r * 0.5, r * 0.16, 0.82], [r * 0.42, 0, 1.0]]
+          : [[r * 0.45, r * 0.2, 0.78], [-r * 0.35, 0, 1.0]];
         ctx.strokeStyle = TINTA;
-        ctx.beginPath();
-        ctx.moveTo(cx - r * 1.15, cy + r * 0.75);
-        ctx.lineTo(cx, cy - r * 1.05);
-        ctx.lineTo(cx + r * 1.15, cy + r * 0.75);
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-        // Ladera sombreada, para que parezca relieve y no un triángulo.
-        ctx.fillStyle = 'rgba(74,59,40,.22)';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - r * 1.05);
-        ctx.lineTo(cx + r * 1.15, cy + r * 0.75);
-        ctx.lineTo(cx + r * 0.15, cy + r * 0.75);
-        ctx.closePath();
-        ctx.fill();
+        for (const [dx, dy, escala] of cumbres) {
+          const bx = cx + dx, by = cy + dy, br = r * escala;
+          ctx.fillStyle = escala < 1 ? '#a2947a' : '#b6a78a';
+          ctx.beginPath();
+          ctx.moveTo(bx - br * 1.05, by + r * 0.72);
+          ctx.lineTo(bx, by - br * 1.0);
+          ctx.lineTo(bx + br * 1.05, by + r * 0.72);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(74,59,40,.2)';
+          ctx.beginPath();
+          ctx.moveTo(bx, by - br * 1.0);
+          ctx.lineTo(bx + br * 1.05, by + r * 0.72);
+          ctx.lineTo(bx + br * 0.12, by + r * 0.72);
+          ctx.closePath();
+          ctx.fill();
+        }
         break;
       }
       case 'loma':
@@ -338,25 +364,30 @@ const Atlas = (() => {
         break;
       case 'bosque':
       case 'selva': {
-        if (cual === 'bosque' && salta > 0.72) break;
-        const cuantos = cual === 'selva' ? (salta > 0.5 ? 2 : 1) : (salta > 0.5 ? 2 : 1);
-        ctx.strokeStyle = cual === 'selva' ? '#4c5c33' : '#5a6b3a';
-        ctx.fillStyle = cual === 'selva' ? '#7d9155' : '#8d9c62';
+        // Un bosque es espeso: tres arbolitos por casilla, de tamaños algo
+        // distintos, para que la mancha se vea frondosa y no un sello repetido.
+        const cuantos = cual === 'selva' ? 3 : (salta > 0.35 ? 3 : 2);
+        ctx.strokeStyle = cual === 'selva' ? '#3f5029' : '#4d5f31';
         for (let k = 0; k < cuantos; k++) {
-          const ax = cx + (k - (cuantos - 1) / 2) * r * 0.95;
-          const ay = cy + (azar(x, y, 4 + k) - 0.5) * r * 0.3;
+          const ax = cx + (k - (cuantos - 1) / 2) * r * 0.78
+                     + (azar(x, y, 30 + k) - 0.5) * r * 0.25;
+          const ay = cy + (azar(x, y, 4 + k) - 0.5) * r * 0.55;
+          const rr = r * (0.38 + azar(x, y, 40 + k) * 0.22);
+          ctx.fillStyle = cual === 'selva'
+            ? (k % 2 ? '#6c8548' : '#7b9553')
+            : (k % 2 ? '#7d9055' : '#8b9d61');
           ctx.beginPath();
-          ctx.moveTo(ax, ay + r * 0.75);
-          ctx.lineTo(ax, ay + r * 0.15);
+          ctx.moveTo(ax, ay + rr * 1.5);
+          ctx.lineTo(ax, ay + rr * 0.5);
           ctx.stroke();
           ctx.beginPath();
-          ctx.arc(ax, ay - r * 0.2, r * 0.5, 0, Math.PI * 2);
+          ctx.arc(ax, ay - rr * 0.15, rr, 0, Math.PI * 2);
           ctx.fill(); ctx.stroke();
         }
         break;
       }
       case 'hierba':
-        if (salta > 0.55) break;
+        if (salta > 0.82) break;
         ctx.strokeStyle = 'rgba(108,110,60,.55)';
         ctx.beginPath();
         ctx.moveTo(cx - r * 0.35, cy + r * 0.3); ctx.lineTo(cx - r * 0.1, cy - r * 0.35);
@@ -364,7 +395,7 @@ const Atlas = (() => {
         ctx.stroke();
         break;
       case 'mata':
-        if (salta > 0.6) break;
+        if (salta > 0.8) break;
         ctx.strokeStyle = 'rgba(122,110,66,.5)';
         ctx.beginPath();
         ctx.moveTo(cx - r * 0.5, cy); ctx.lineTo(cx + r * 0.5, cy);
@@ -657,6 +688,7 @@ const Atlas = (() => {
   const motivo_ = () => porQueNo;
 
   return { preparar, capa, hayMapa, info, motivo: motivo_, terrenos, desconocidos,
+           opcion, opciones,
            cadenas,   // expuesto para la autocomprobación
 
            PAPEL, PAPEL_OSCURO, TINTA };

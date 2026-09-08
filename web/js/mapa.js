@@ -119,9 +119,30 @@ const Mapa = (() => {
     ])));
   }
 
+  /* Interruptores de lo que se dibuja del terreno. Cambiarlos obliga a
+     repintar el mapa entero, asi que no van con el resto de capas. */
+  function pintarCapasTerreno() {
+    const caja = document.getElementById('capas-terreno');
+    if (!caja) return;
+    if (!Atlas.hayMapa()) { UI.poner(caja); return; }
+    const cuales = [
+      ['motivos', 'Bosques, montañas y demás'],
+      ['rios', 'Ríos'],
+      ['construcciones', 'Calzadas, puentes y túneles'],
+    ];
+    UI.poner(caja, ...cuales.map(([id, nombre]) => UI.el('label', { class: 'capa' }, [
+      UI.el('input', {
+        type: 'checkbox', checked: Atlas.opciones[id] ? 'checked' : null,
+        onchange: (e) => { Atlas.opcion(id, e.target.checked); dibujar(); },
+      }),
+      UI.el('span', { text: nombre }),
+    ])));
+  }
+
   /* Qué terreno hay en este mundo y con qué color se ha pintado. Los nombres
      son los que trae el export, sin traducir ni maquillar. */
   function pintarTerreno() {
+    pintarCapasTerreno();
     const caja = document.getElementById('leyenda-terreno');
     if (!caja) return;
     const lista = Atlas.hayMapa() ? Atlas.terrenos() : [];

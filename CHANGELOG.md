@@ -10,6 +10,35 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.4.2 — Más frondoso, y una herramienta para dejar de adivinar
+
+*Mejoras del mapa y un comando nuevo.*
+
+**Añadido**
+
+- **`python -m app.cli geografia`.** Vuelca en un fichero de texto pequeño qué
+  traen de verdad tus XML sobre el mapa: cuántos ríos hay, qué campos tiene
+  cada uno y tres registros enteros tal cual vienen. Existe porque suponer sale
+  caro: los ríos se dibujaron mal por dar por hecho un formato en vez de
+  mirarlo. El fichero es de unos pocos KB, no lleva nada personal y se puede
+  compartir para resolver dudas del mapa sin mover ficheros de 45 MB.
+- **Interruptores del terreno** en el panel de la izquierda: se pueden apagar
+  los ríos, las calzadas o los dibujos de bosques y montañas por separado.
+
+**Mejorado**
+
+- **Los bosques son bosques**: tres arbolitos por casilla, de tamaños y tonos
+  distintos, en vez de uno o dos siempre iguales.
+- **Las montañas se leen como cordilleras**: dos cumbres por casilla, una
+  detrás de otra, con su ladera sombreada.
+- **Cada casilla tiene su propia sombra**, así que el terreno ya no parece una
+  plancha de color uniforme.
+- **Más cuerpo en los colores** de bosque, selva, pradera, monte y desierto,
+  para que se distingan de un vistazo sin salirse del pergamino.
+- Praderas y estepas con más matas, que antes quedaban demasiado vacías.
+
+---
+
 ## v1.4.1 — Los ríos dejan de cruzar el mundo de punta a punta
 
 *Arreglo del mapa, encontrado en cuanto se probó con un mundo de verdad.*

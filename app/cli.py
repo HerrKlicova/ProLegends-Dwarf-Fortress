@@ -1,6 +1,7 @@
 """Linea de comandos de ProLegends.
 
     python -m app.cli juego           busca Dwarf Fortress y trae sus exports
+    python -m app.cli geografia       vuelca que traen los XML sobre el mapa
     python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
     python -m app.cli ordenar         renombra y ordena los XML de data/imports/
     python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
@@ -157,6 +158,43 @@ def cmd_juego(args: argparse.Namespace) -> int:
     for fallo in resultado["fallos"]:
         print(f"  [ERROR] {fallo}")
     return 1 if resultado["fallos"] else 0
+
+
+def cmd_geografia(args: argparse.Namespace) -> int:
+    """Enseña qué traen de verdad los XML sobre la geografía del mundo.
+
+    Sirve para cuando el mapa no cuadra con lo que enseña el juego: en vez de
+    suponer cómo vienen los datos, se miran. El resultado es un fichero de
+    texto pequeño que se puede leer o pegar en una conversación.
+    """
+    from .parser.discover import discover
+    from .parser.inspeccion import informe
+
+    pares, avisos = discover(config.IMPORTS_DIR)
+    for aviso in avisos:
+        print(f"  [aviso] {aviso}")
+    if not pares:
+        print(f"No hay ningún export en {config.IMPORTS_DIR}.")
+        return 1
+
+    if args.prefijo:
+        pares = [p for p in pares if p.prefix == args.prefijo]
+        if not pares:
+            print(f"No hay ningún export que se llame '{args.prefijo}'.")
+            return 1
+    else:
+        pares = pares[-1:]   # el más reciente basta
+
+    rutas = [r for par in pares for r in (par.main, par.plus) if r]
+    salida = Path(args.salida) if args.salida else (config.DATA_DIR / "geografia.txt")
+    print(f"Mirando {len(rutas)} fichero(s)...")
+    texto = informe(rutas, salida=salida)
+    print()
+    print(texto)
+    print("=" * 70)
+    print(f"Guardado también en: {salida}")
+    print("Ese fichero es pequeño y no lleva nada personal: se puede compartir.")
+    return 0
 
 
 def cmd_diagnostico(_: argparse.Namespace) -> int:
@@ -346,6 +384,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_juego.add_argument("--olvidar", action="store_true",
                          help="olvidar la carpeta guardada")
     p_juego.set_defaults(func=cmd_juego)
+
+    p_geo = sub.add_parser(
+        "geografia",
+        help="vuelca qué traen los XML sobre el mapa (ríos, regiones, calzadas)",
+    )
+    p_geo.add_argument("--prefijo", help="mirar este export en vez del más reciente")
+    p_geo.add_argument("--salida", help="dónde escribir el informe")
+    p_geo.set_defaults(func=cmd_geografia)
 
     p_diag = sub.add_parser(
         "diagnostico", help="dice qué ve la aplicación en cada fichero de data/imports/"

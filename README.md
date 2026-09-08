@@ -366,6 +366,7 @@ tamaño del mundo ya están en `exports`).
 No hacen falta para el uso normal, pero están:
 
 ```
+python -m app.cli geografia       vuelca qué traen los XML sobre el mapa
 python -m app.cli juego           busca Dwarf Fortress y enseña sus exports
 python -m app.cli juego --traer   copia a tu carpeta de exports los que falten
 python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
