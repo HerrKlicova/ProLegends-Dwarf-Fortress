@@ -24,29 +24,45 @@ from .. import db as dbmod
 ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 SIN_DATO = "."
 
-_PAR = re.compile(r"(-?\d+)\s*,\s*(-?\d+)")
+_NUMERO = re.compile(r"-?\d+")
+_SEPARADOR = re.compile(r"[|;\s]+")
 
 
-def parse_coords(valor) -> list[tuple[int, int]]:
-    """Saca pares x,y de como sea que vengan.
+def parse_grupos(valor) -> list[list[int]]:
+    """Parte un campo de coordenadas en grupos de números.
 
-    DFHack los escribe como "x,y|x,y|x,y", pero según la versión pueden llegar
-    separados por espacios o repartidos en varias etiquetas, así que se aceptan
-    todas esas formas en lugar de dar por supuesta una.
+    Los campos vienen separados por barras: "4,32|3,32|3,31". Cada grupo puede
+    traer solo la casilla (``x,y``) o más cosas: el recorrido de un río es
+    ``x,y,caudal,salida,altura``. Lo importante es NO juntar números de grupos
+    distintos: leyendo pares a lo largo de todo el texto, de "4,32,0,6,117"
+    salían la casilla buena y luego (0,6) y (117,3), que no existen. Eso era lo
+    que llenaba el mapa de rayas.
     """
     if valor is None or valor is True:
         return []
     if isinstance(valor, (list, tuple)):
-        salida: list[tuple[int, int]] = []
+        salida: list[list[int]] = []
         for trozo in valor:
-            salida.extend(parse_coords(trozo))
+            salida.extend(parse_grupos(trozo))
         return salida
     if isinstance(valor, dict):
         for clave in ("coords", "path", "points", "coord"):
             if clave in valor:
-                return parse_coords(valor[clave])
+                return parse_grupos(valor[clave])
         return []
-    return [(int(m.group(1)), int(m.group(2))) for m in _PAR.finditer(str(valor))]
+    grupos = []
+    for trozo in _SEPARADOR.split(str(valor)):
+        if not trozo:
+            continue
+        numeros = [int(n) for n in _NUMERO.findall(trozo)]
+        if len(numeros) >= 2:
+            grupos.append(numeros)
+    return grupos
+
+
+def parse_coords(valor) -> list[tuple[int, int]]:
+    """Las casillas de un campo de coordenadas: los dos primeros de cada grupo."""
+    return [(g[0], g[1]) for g in parse_grupos(valor)]
 
 
 def _primer_coord(registro: dict) -> list[tuple[int, int]]:
@@ -127,6 +143,7 @@ def terreno(conn: sqlite3.Connection, export_id: int) -> dict:
     limites = _limites(conn, export_id, celdas)
     rejilla = _tejer(celdas, limites) if celdas else ""
 
+    rios = _rios(conn, export_id)
     return {
         "hay_mapa": bool(celdas),
         "motivo": "" if celdas else (
@@ -139,7 +156,8 @@ def terreno(conn: sqlite3.Connection, export_id: int) -> dict:
         "rejilla": rejilla,
         "regiones": ficha,
         "regiones_sin_coordenadas": sin_coords,
-        "rios": _rios(conn, export_id),
+        "rios": rios,
+        "caudal_maximo": max((r["caudal"] or 0) for r in rios) if rios else 0,
         "construcciones": _construcciones(conn, export_id),
         "picos": _picos(conn, export_id),
     }
@@ -179,13 +197,34 @@ def _tejer(celdas: dict, limites: dict) -> str:
 
 
 def _rios(conn: sqlite3.Connection, export_id: int) -> list[dict]:
+    """Los ríos, con su caudal.
+
+    Cada punto del recorrido viene como ``x,y,caudal,salida,altura``. El caudal
+    crece río abajo y la altura baja, que es como se distingue un arroyo de un
+    río de verdad: el juego solo dibuja en el mapa del mundo los caudalosos, y
+    aquí se puede hacer lo mismo sin inventarse nada.
+    """
     salida = []
     for dato in _crudos(conn, export_id, ("rivers", "river")):
-        camino = _primer_coord(dato)
-        if len(camino) < 2:
+        grupos = []
+        for clave in ("path", "coords", "points"):
+            if clave in dato:
+                grupos = parse_grupos(dato[clave])
+                if grupos:
+                    break
+        if len(grupos) < 1:
             continue
-        salida.append({"nombre": _texto(dato.get("name")), "camino": camino})
-    salida.sort(key=lambda r: len(r["camino"]), reverse=True)
+        camino = [(g[0], g[1]) for g in grupos]
+        caudales = [g[2] for g in grupos if len(g) >= 3]
+        fin = parse_coords(dato.get("end_pos"))
+        if fin:
+            camino.append(fin[0])
+        salida.append({
+            "nombre": _texto(dato.get("name")),
+            "camino": camino,
+            "caudal": max(caudales) if caudales else None,
+        })
+    salida.sort(key=lambda r: (r["caudal"] or 0, len(r["camino"])), reverse=True)
     return salida
 
 
@@ -194,7 +233,7 @@ def _construcciones(conn: sqlite3.Connection, export_id: int) -> list[dict]:
     for dato in _crudos(conn, export_id,
                         ("world_constructions", "world_construction")):
         camino = _primer_coord(dato)
-        if len(camino) < 2:
+        if not camino:
             continue
         salida.append({
             "nombre": _texto(dato.get("name")),

@@ -49,7 +49,7 @@ const Atlas = (() => {
   let cache = null;         // { clave, lienzo }
   let porQueNo = '';        // por qué este export no se puede dibujar
   // Qué capas del terreno se dibujan. Cambiarlas obliga a repintar el mapa.
-  const opciones = { rios: true, construcciones: true, motivos: true };
+  const opciones = { rios: true, arroyos: false, construcciones: true, motivos: true };
 
   function opcion(nombre, valor) {
     if (opciones[nombre] === valor) return;
@@ -110,7 +110,7 @@ const Atlas = (() => {
   /* --------------------------------------------------- lienzo del terreno */
   function capa(anchoPx, altoPx, geom) {
     const clave = `${anchoPx}x${altoPx}|${geom.celda.toFixed(3)}|${geom.offX.toFixed(1)}`
-      + `|${opciones.rios}${opciones.construcciones}${opciones.motivos}`;
+      + `|${opciones.rios}${opciones.arroyos}${opciones.construcciones}${opciones.motivos}`;
     if (cache && cache.clave === clave) return cache.lienzo;
     const lienzo = document.createElement('canvas');
     lienzo.width = anchoPx;
@@ -551,20 +551,44 @@ const Atlas = (() => {
     ctx.stroke();
   }
 
+  /* Un río es "principal" si su caudal llega a la quinta parte del mayor del
+     mundo. No es una cifra inventada: el caudal viene en el propio export, y
+     el juego tampoco pinta los arroyos en el mapa del mundo. */
+  const UMBRAL = 0.2;
+
+  function esPrincipal(rio) {
+    const tope = datos.caudal_maximo || 0;
+    if (!tope || rio.caudal === null || rio.caudal === undefined) return true;
+    return rio.caudal >= tope * UMBRAL;
+  }
+
   function rios(ctx, geom, pluma) {
     const { celda, offX, offY } = geom;
     const px = (x) => offX + x * celda, py = (y) => offY + y * celda;
+    const tope = datos.caudal_maximo || 0;
     ctx.strokeStyle = RIO;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     for (const rio of datos.rios) {
-      // Los ríos largos son los caudalosos: se dibujan más gruesos.
-      const grosor = pluma * (rio.camino.length > 40 ? 0.22 : 0.15);
-      ctx.lineWidth = Math.max(0.9, grosor);
+      const principal = esPrincipal(rio);
+      if (!principal && !opciones.arroyos) continue;
+      // El grosor sale del caudal, que es un dato del export: un arroyo es un
+      // hilo y un río caudaloso una línea gruesa.
+      const parte = tope && rio.caudal ? Math.sqrt(rio.caudal / tope) : 0.45;
+      ctx.lineWidth = Math.max(0.7, pluma * (0.07 + 0.19 * parte));
+      ctx.globalAlpha = principal ? 1 : 0.55;
       for (const tramo of cadenas(rio.camino, datos.ancho, datos.alto)) {
         suave(ctx, tramo, px, py);
       }
     }
+    ctx.globalAlpha = 1;
+  }
+
+  /* Cuántos ríos hay y cuántos se están dibujando, para poder decirlo. */
+  function cuentaRios() {
+    if (!datos) return { total: 0, principales: 0 };
+    const principales = datos.rios.filter(esPrincipal).length;
+    return { total: datos.rios.length, principales };
   }
 
   function construcciones(ctx, geom, pluma) {
@@ -578,7 +602,20 @@ const Atlas = (() => {
       ctx.setLineDash(tipo === 'tunnel' ? [pluma * 0.25, pluma * 0.35]
                     : tipo === 'bridge' ? [pluma * 0.7, pluma * 0.25]
                     : [pluma * 0.55, pluma * 0.4]);
-      for (const tramo of cadenas(c.camino, datos.ancho, datos.alto)) {
+      const tramos = cadenas(c.camino, datos.ancho, datos.alto);
+      if (!tramos.length && c.camino.length === 1) {
+        // Un puente puede ocupar una sola casilla: se marca con un trazo corto.
+        const [x, y] = c.camino[0];
+        if (x >= 0 && y >= 0 && x < datos.ancho && y < datos.alto) {
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(px(x) + celda * 0.2, py(y) + celda * 0.5);
+          ctx.lineTo(px(x) + celda * 0.8, py(y) + celda * 0.5);
+          ctx.stroke();
+        }
+        continue;
+      }
+      for (const tramo of tramos) {
         suave(ctx, tramo, px, py);
       }
     }
@@ -688,7 +725,7 @@ const Atlas = (() => {
   const motivo_ = () => porQueNo;
 
   return { preparar, capa, hayMapa, info, motivo: motivo_, terrenos, desconocidos,
-           opcion, opciones,
+           opcion, opciones, cuentaRios,
            cadenas,   // expuesto para la autocomprobación
 
            PAPEL, PAPEL_OSCURO, TINTA };

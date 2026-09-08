@@ -536,25 +536,29 @@ def recortar(mundo, args, anyo: int, con_fortaleza: bool):
     for r in mundo["regiones"]:
         coords = "|".join(f"{x},{y}" for x, y in r["casillas"])
         p.append(f"<region><id>{r['id']}</id><coords>{coords}</coords>"
-                 f"<evilness>{r['id'] % 3}</evilness></region>")
+                 f"<evilness>{['neutral', 'good', 'evil'][r['id'] % 3]}"f"</evilness></region>")
     p.append("</regions>")
 
     p.append("<rivers>")
     for i, rio in enumerate(mundo["geo"]["rios"]):
-        # A proposito NO se escriben en el orden en que se recorre el rio: en
-        # los exports reales esto es "las casillas que ocupa", ordenadas por
-        # filas. Quien lo dibuje tiene que reconstruir la red, no fiarse del
-        # orden de la lista.
-        camino = "|".join(f"{x},{y}" for x, y in sorted(rio["camino"],
-                                                        key=lambda c: (c[1], c[0])))
+        # Formato real: cada punto es x,y,caudal,salida,altura, y NO solo x,y.
+        # Es la trampa que llenaba el mapa de rayas al leer pares sueltos a lo
+        # largo de todo el texto. El caudal sube rio abajo y la altura baja.
+        tramos = []
+        for k, (x, y) in enumerate(rio["camino"]):
+            caudal = 0 if k < 2 else int((k - 1) * 60 * (1 + i % 3))
+            altura = 140 - k * 3
+            tramos.append(f"{x},{y},{caudal},{k % 9},{altura}")
+        camino = "|".join(tramos) + "|"
+        fin = rio["camino"][-1]
         p.append(f"<river><name>the river of {rio['nombre']}</name>"
-                 f"<path>{camino}</path></river>")
+                 f"<path>{camino}</path>"
+                 f"<end_pos>{fin[0]},{fin[1]}</end_pos></river>")
     p.append("</rivers>")
 
     p.append("<world_constructions>")
     for c in mundo["construcciones"]:
-        coords = "|".join(f"{x},{y}" for x, y in sorted(c["camino"],
-                                                        key=lambda p: (p[1], p[0])))
+        coords = "|".join(f"{x},{y}" for x, y in c["camino"]) + "|"
         p.append(f"<world_construction><id>{c['id']}</id><name>{c['nombre']}</name>"
                  f"<type>{c['tipo']}</type><coords>{coords}</coords></world_construction>")
     p.append("</world_constructions>")
@@ -565,7 +569,8 @@ def recortar(mundo, args, anyo: int, con_fortaleza: bool):
                  f"<name>the peak of {pico['nombre']}</name>"
                  f"<coords>{pico['x']},{pico['y']}</coords>"
                  f"<height>{pico['altura']}</height>"
-                 f"<is_volcano>{pico['volcan']}</is_volcano></mountain_peak>")
+                 + ("<is_volcano />" if pico["volcan"] else "")
+                 + "</mountain_peak>")
     p.append("</mountain_peaks>")
 
     p.append("<entity_populations>")

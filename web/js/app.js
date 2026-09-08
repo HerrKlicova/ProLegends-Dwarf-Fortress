@@ -6,7 +6,7 @@ const App = (() => {
      coinciden es que el navegador ha servido de su caché la interfaz de una
      versión anterior, y hay que avisar en vez de dejar que parezca que la
      actualización no ha hecho nada. */
-  const VERSION_INTERFAZ = '1.4.3';
+  const VERSION_INTERFAZ = '1.4.4';
   let estado = { mundos: [], mundoId: null, exportId: null, vista: 'mapa', cargadas: new Set() };
 
   const mundoId = () => estado.mundoId;

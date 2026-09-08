@@ -125,18 +125,26 @@ const Mapa = (() => {
     const caja = document.getElementById('capas-terreno');
     if (!caja) return;
     if (!Atlas.hayMapa()) { UI.poner(caja); return; }
+    const r = Atlas.cuentaRios();
     const cuales = [
       ['motivos', 'Bosques, montañas y demás'],
-      ['rios', 'Ríos'],
+      ['rios', r.total ? `Ríos (${r.principales} de ${r.total})` : 'Ríos'],
+      ['arroyos', 'Incluir los arroyos'],
       ['construcciones', 'Calzadas, puentes y túneles'],
     ];
-    UI.poner(caja, ...cuales.map(([id, nombre]) => UI.el('label', { class: 'capa' }, [
-      UI.el('input', {
-        type: 'checkbox', checked: Atlas.opciones[id] ? 'checked' : null,
-        onchange: (e) => { Atlas.opcion(id, e.target.checked); dibujar(); },
-      }),
-      UI.el('span', { text: nombre }),
-    ])));
+    UI.poner(caja,
+      ...cuales.map(([id, nombre]) => UI.el('label', { class: 'capa' }, [
+        UI.el('input', {
+          type: 'checkbox', checked: Atlas.opciones[id] ? 'checked' : null,
+          onchange: (e) => { Atlas.opcion(id, e.target.checked); pintarTerreno(); dibujar(); },
+        }),
+        UI.el('span', { text: nombre }),
+      ])),
+      r.total > r.principales
+        ? UI.el('p', { class: 'nota', text:
+            'El grosor de cada río sale de su caudal, que viene en el export. '
+            + 'Los arroyos no se dibujan por defecto, igual que en el mapa del juego.' })
+        : null);
   }
 
   /* Qué terreno hay en este mundo y con qué color se ha pintado. Los nombres

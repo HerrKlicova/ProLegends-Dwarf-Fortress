@@ -621,6 +621,18 @@ def main() -> int:
 
         comprobar(terr.parse_coords("3,4|5,6|7,8") == [(3, 4), (5, 6), (7, 8)],
                   "las coordenadas se leen separadas por barras, como las escribe DFHack")
+
+        # LA trampa: el recorrido de un rio no trae dos numeros por punto sino
+        # cinco (x, y, caudal, salida, altura). Leyendo pares sueltos a lo
+        # largo del texto salian coordenadas que no existen —(0,6), (60,2)—, y
+        # eso llenaba el mapa de rayas de punta a punta.
+        CAMINO = "4,32,0,6,117|3,32,60,2,101|3,31,124,7,101|2,31,192,8,99|"
+        comprobar(terr.parse_coords(CAMINO) == [(4, 32), (3, 32), (3, 31), (2, 31)],
+                  "de un recorrido de rio salen SOLO sus casillas, no los otros números")
+        comprobar([len(g) for g in terr.parse_grupos(CAMINO)] == [5, 5, 5, 5],
+                  "y cada punto conserva sus cinco datos")
+        comprobar([g[2] for g in terr.parse_grupos(CAMINO)] == [0, 60, 124, 192],
+                  "el caudal se lee y crece río abajo")
         comprobar(terr.parse_coords("1,2 3,4\n5,6") == [(1, 2), (3, 4), (5, 6)],
                   "y también separadas por espacios o saltos de línea")
         comprobar(terr.parse_coords(["9,9", "8,8"]) == [(9, 9), (8, 8)],
@@ -649,6 +661,20 @@ def main() -> int:
                   f"se distingue el mar de la tierra: {mapa_geo['biomas'][:4]}")
         comprobar(len(mapa_geo["rios"]) > 0 and len(mapa_geo["rios"][0]["camino"]) > 2,
                   "los ríos llegan con su recorrido")
+        comprobar(mapa_geo["caudal_maximo"] > 0 and mapa_geo["rios"][0]["caudal"],
+                  "y con su caudal, que es lo que separa un río de un arroyo")
+        comprobar(mapa_geo["rios"] == sorted(mapa_geo["rios"],
+                                             key=lambda r: (r["caudal"] or 0), reverse=True),
+                  "vienen ordenados del más caudaloso al menos")
+        fuera = [c for r in mapa_geo["rios"] for c in r["camino"]
+                 if not (0 <= c[0] < mapa_geo["ancho"] and 0 <= c[1] < mapa_geo["alto"])]
+        comprobar(not fuera,
+                  f"ninguna casilla de río cae fuera del mundo ({len(fuera)} sueltas)")
+        saltos = sum(1 for r in mapa_geo["rios"] for i in range(1, len(r["camino"]))
+                     if max(abs(r["camino"][i][0] - r["camino"][i - 1][0]),
+                            abs(r["camino"][i][1] - r["camino"][i - 1][1])) > 1)
+        comprobar(saltos == 0,
+                  f"y ningún río salta de una punta del mapa a otra ({saltos} saltos)")
         comprobar(len(mapa_geo["construcciones"]) > 0,
                   "y las calzadas, puentes y túneles con el suyo")
         comprobar(len(mapa_geo["picos"]) > 0 and mapa_geo["picos"][0]["nombre"],
@@ -746,10 +772,14 @@ console.log(salida.join('\\n'));
             "SELECT data_json FROM raw_records WHERE section = 'rivers' LIMIT 1",
         )
         if crudo:
-            puntos = terr.parse_coords(_json.loads(crudo["data_json"]).get("path"))
-            comprobar(len(puntos) > 2 and puntos == sorted(puntos, key=lambda c: (c[1], c[0])),
-                      "el export de prueba escribe los ríos por filas y no en el orden en "
-                      "que se recorren, que es como vienen los de verdad")
+            camino = _json.loads(crudo["data_json"]).get("path")
+            grupos = terr.parse_grupos(camino)
+            comprobar(grupos and all(len(g) == 5 for g in grupos),
+                      "el export de prueba escribe los ríos con sus cinco datos por punto, "
+                      "como los de verdad, y no con dos")
+            alturas = [g[4] for g in grupos]
+            comprobar(alturas == sorted(alturas, reverse=True),
+                      "y con la altura bajando río abajo, que es como se sabe hacia dónde corre")
 
         conn.close()
     finally:

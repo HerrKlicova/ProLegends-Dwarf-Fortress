@@ -10,6 +10,55 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.4.4 — Los ríos, esta vez con el dato delante
+
+*El arreglo de verdad, con el XML a la vista.*
+
+**Lo que pasaba**
+
+El recorrido de un río **no trae dos números por punto, sino cinco**:
+
+```
+<path>4,32,0,6,117|3,32,60,2,101|3,31,124,7,101|2,31,192,8,99|</path>
+```
+
+Son `x, y, caudal, salida, altura`. Yo buscaba pares «número,número» a lo largo
+de todo el texto, así que de `4,32,0,6,117` sacaba la casilla buena `(4,32)` y
+además `(0,6)`; de la siguiente, `(60,2)`; de la otra, `(124,7)`, `(192,8)`...
+Coordenadas que no existen, repartidas por todo el mapa y hasta fuera de él. Eso
+era el abanico de rayas.
+
+**Aviso de honestidad:** el diagnóstico de la v1.4.1 estaba equivocado. Allí dije
+que las casillas venían desordenadas, y no es cierto: vienen perfectamente
+ordenadas río abajo (se ve en que la altura va bajando). Aquello lo supuse en
+vez de mirarlo; esto está mirado.
+
+**Arreglado**
+
+- **Las coordenadas se leen por grupos**, nunca juntando números de dos puntos
+  distintos. Vale igual para regiones, calzadas y ríos, traigan dos datos por
+  punto o cinco.
+- Los puentes que ocupan **una sola casilla** ya se dibujan, en vez de
+  descartarse por «tener menos de dos puntos».
+
+**Añadido**
+
+- **El grosor de cada río sale de su caudal**, que es un dato del export: un
+  arroyo es un hilo y un río caudaloso una línea gruesa.
+- **Los arroyos no se dibujan por defecto**, igual que en el mapa del juego. Un
+  río se considera principal si su caudal llega a la quinta parte del mayor del
+  mundo; el resto están ahí y se pueden ver marcando **«Incluir los arroyos»**.
+  El panel dice cuántos hay de cada: en un mundo con 594 ríos, la mayoría son
+  arroyos.
+- Los ríos se ordenan del más caudaloso al menos.
+
+**En la autocomprobación**, ahora con el formato real: que de un recorrido de río
+salgan solo sus casillas y no los otros números, que el caudal se lea y crezca
+río abajo, que ninguna casilla caiga fuera del mundo y que ningún río salte de
+una punta del mapa a otra.
+
+---
+
 ## v1.4.3 — El informe del mapa, sin tocar la terminal
 
 *Comodidad.*
