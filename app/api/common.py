@@ -258,3 +258,19 @@ def event_payload(row: dict, incluir_json: bool = True) -> dict:
         "artifact_id": row.get("artifact_id"),
         "detalles": {k: v for k, v in datos.items() if v not in (None, "", [], {})},
     }
+
+
+def narrar(conn: sqlite3.Connection, export_id: int,
+           filas: list[dict], eventos: list[dict]) -> list[dict]:
+    """Añade a cada evento su frase en castellano.
+
+    Se hace en una tanda: el narrador resuelve de golpe todos los nombres que
+    hagan falta en vez de preguntar por cada evento.
+    """
+    from ..model.narrador import Narrador
+
+    narrador = Narrador(conn, export_id)
+    narrador.preparar(filas)
+    for fila, evento in zip(filas, eventos):
+        evento["frase"] = narrador.frase(fila)
+    return eventos

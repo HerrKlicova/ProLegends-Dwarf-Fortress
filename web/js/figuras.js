@@ -75,7 +75,7 @@ const Figuras = (() => {
     return el('div', {}, [
       el('div', { class: 'ficha-cabecera' }, [
         el('h3', { text: f.nombre || `Figura ${f.id}` }),
-        el('div', { class: 'tipo', text: [f.raza, f.casta, f.tipo].filter(Boolean).join(' · ') }),
+        el('div', { class: 'tipo', text: [f.raza, f.casta, f.tipo_legible || f.tipo].filter(Boolean).join(' · ') }),
       ]),
       UI.datos([
         ['Nacimiento', f.nacimiento === null || f.nacimiento === -1 ? null : `año ${f.nacimiento}`],
@@ -85,14 +85,16 @@ const Figuras = (() => {
         ['Rasgos', banderas.length ? banderas.join(', ') : null],
       ]),
 
-      f.ficha_muerte ? UI.bloque('Como murio', el('p', {}, [
-        document.createTextNode(`Anyo ${f.ficha_muerte.year}. `),
+      f.ficha_muerte ? UI.bloque('Cómo murió', el('p', {}, [
+        document.createTextNode(`Año ${f.ficha_muerte.year}. `),
+        el('span', { text: f.ficha_muerte.frase || '' }),
         f.ficha_muerte.asesino
-          ? el('span', {}, ['A manos de ', el('span', {
+          ? el('div', { class: 'nota' }, ['Ver a ', el('span', {
               class: 'enlace', text: f.ficha_muerte.asesino,
               onclick: () => abrir(f.ficha_muerte.slayer_hfid) })])
-          : document.createTextNode('Sin causante registrado. '),
-        el('span', { class: 'nota', text: ' ' + UI.detallesTexto(f.ficha_muerte.detalles) }),
+          : null,
+        UI.enBruto()
+          ? el('div', { class: 'crudo', text: UI.detallesTexto(f.ficha_muerte.detalles) }) : null,
       ])) : null,
 
       f.pertenencias.length ? UI.bloque('Entidades a las que pertenece o perteneció',
@@ -100,8 +102,8 @@ const Figuras = (() => {
           p.entidad
             ? el('span', { class: 'enlace', text: p.entidad, onclick: () => verEntidad(p.entidad_id) })
             : `entidad ${p.entidad_id}`,
-          [p.tipo_entidad, p.raza].filter(Boolean).join(' · ') || '—',
-          (p.vinculo || '') + (p.antiguo ? ' (antiguo)' : ''),
+          [p.tipo_entidad_legible || p.tipo_entidad, p.raza].filter(Boolean).join(' · ') || '—',
+          (p.vinculo_legible || p.vinculo || '') + (p.antiguo ? ' (antiguo)' : ''),
         ]))) : null,
 
       f.cargos.length ? UI.bloque('Cargos',
@@ -112,27 +114,27 @@ const Figuras = (() => {
 
       f.sitios.length ? UI.bloque('Sitios vinculados',
         el('div', { class: 'chips' }, f.sitios.map((s) => el('span', {
-          class: 'chip enlace', text: `${s.nombre || 'sitio ' + s.site_id} · ${s.link_type || ''}`,
+          class: 'chip enlace', text: `${s.nombre || 'sitio ' + s.site_id} · ${s.legible || s.link_type || ''}`,
           onclick: () => App.verSitio(s.site_id),
         })))) : null,
 
       f.deidades && f.deidades.length ? UI.bloque('Deidades',
         el('div', { class: 'chips' }, f.deidades.map((d) => el('span', {
           class: 'chip enlace',
-          text: `${d.nombre || 'sin nombre'}${d.vinculo ? ' · ' + d.vinculo : ''}`,
+          text: `${d.nombre || 'sin nombre'}${d.vinculo ? ' · ' + (d.vinculo_legible || d.vinculo) : ''}`,
           onclick: () => (d.hf_id !== null && d.hf_id !== undefined)
             ? abrir(d.hf_id) : verEntidad(d.entidad_id),
         })))) : null,
 
-      listaChips('Esferas', f.esferas),
-      listaChips('Objetivos vitales', f.objetivos),
+      listaChips('Esferas', f.esferas_legibles && f.esferas_legibles.length ? f.esferas_legibles : f.esferas),
+      listaChips('Objetivos vitales', f.objetivos_legibles && f.objetivos_legibles.length ? f.objetivos_legibles : f.objetivos),
       listaChips('Secretos conocidos', f.secretos),
       listaChips('Interacciones', f.interacciones),
       listaChips('Profesiones', f.profesiones),
 
       f.habilidades.length ? UI.bloque('Habilidades',
         el('div', { class: 'chips' }, f.habilidades.slice(0, 40).map((h) =>
-          el('span', { class: 'chip', text: `${h.skill} (${h.total_ip})` })))) : null,
+          el('span', { class: 'chip', text: `${h.legible || h.skill} (${h.total_ip})` })))) : null,
 
       f.artefactos.length ? UI.bloque('Artefactos que posee',
         el('div', { class: 'chips' }, f.artefactos.map((a) =>
@@ -148,10 +150,10 @@ const Figuras = (() => {
           r.nombre
             ? el('span', { class: 'enlace', text: r.nombre, onclick: () => abrir(r.hf_id) })
             : `figura ${r.hf_id}`,
-          r.vinculo || '—',
+          r.vinculo_legible || r.vinculo || '—',
         ]))) : null,
 
-      f.victimas.length ? UI.bloque(`A quién mato (${f.victimas.length})`,
+      f.victimas.length ? UI.bloque(`A quién mató (${f.victimas.length})`,
         UI.tabla(['Año', 'Víctima', 'Raza'], f.victimas.map((v) => [
           String(UI.anyo(v.year)),
           v.name ? el('span', { class: 'enlace', text: v.name, onclick: () => abrir(v.hfid) }) : `figura ${v.hfid}`,
@@ -159,10 +161,10 @@ const Figuras = (() => {
         ]))) : null,
 
       f.eventos.length ? UI.bloque(`Sucesos de su vida (${f.eventos.length}${f.eventos_truncados ? '+' : ''})`,
-        UI.tabla(['Año', 'Suceso', 'Lugar', 'Detalles'], f.eventos.map((ev) => [
-          String(UI.anyo(ev.anyo)), UI.tipoLegible(ev.tipo),
+        UI.interruptorBruto(() => abrir(f.id)),
+        UI.tabla(['Año', 'Qué pasó', 'Lugar'], f.eventos.map((ev) => [
+          String(UI.anyo(ev.anyo)), UI.suceso(ev),
           ev.sitio ? el('span', { class: 'enlace', text: ev.sitio, onclick: () => App.verSitio(ev.site_id) }) : '—',
-          el('span', { class: 'nota', text: UI.detallesTexto(ev.detalles) }),
         ]))) : null,
 
       el('div', { class: 'bloque' }, [
@@ -236,7 +238,7 @@ const Figuras = (() => {
       }
       UI.poner(panel, el('div', {}, [
         el('div', { class: 'ficha-cabecera' }, [
-          el('h3', { text: 'Quién mato a quién' }),
+          el('h3', { text: 'Quién mató a quién' }),
           el('div', { class: 'tipo', text: 'Ranking por muertes registradas en el archivo de leyendas.' }),
         ]),
         UI.tabla(['#', 'Figura', 'Raza', 'Muertes', 'Algunas víctimas'],

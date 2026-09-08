@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from .. import db as dbmod
+from . import diccionario
 from ..parser import legends as L
 
 # Palabras que aparecen en los tipos de evento de DF. Son vocabulario del juego,
@@ -234,6 +235,11 @@ def summary(conn: sqlite3.Connection, export_id: int, site_id: int) -> dict:
 
     from ..api.common import load_json
 
+    from .narrador import Narrador
+
+    narrador = Narrador(conn, export_id)
+    narrador.preparar(eventos_sitio)
+
     def limpiar(filas: list[dict]) -> list[dict]:
         salida = []
         for fila in filas:
@@ -245,6 +251,7 @@ def summary(conn: sqlite3.Connection, export_id: int, site_id: int) -> dict:
                     "id": fila["event_id"],
                     "anyo": fila["year"],
                     "tipo": fila["type"],
+                    "frase": narrador.frase(fila),
                     "detalles": {k: v for k, v in detalles.items() if v not in (None, "", [], {})},
                 }
             )
@@ -255,6 +262,7 @@ def summary(conn: sqlite3.Connection, export_id: int, site_id: int) -> dict:
             "id": sitio["site_id"],
             "nombre": sitio["name"],
             "tipo": sitio["type"],
+            "tipo_legible": diccionario.sitio(sitio["type"]),
             "x": sitio["coord_x"],
             "y": sitio["coord_y"],
             "estado": sitio["state"],
@@ -336,15 +344,21 @@ def diff(
             return None
         return max(abs(x - fx), abs(y - fy))
 
-    nuevos_eventos = []
-    for row in conn.execute(
+    # El parte de novedades es lo que más se lee, así que va narrado.
+    from .narrador import Narrador
+
+    narrador = Narrador(conn, export_hasta)
+    crudos = [dict(r) for r in conn.execute(
         """SELECT event_id, year, type, site_id, hfid, slayer_hfid, artifact_id,
-                  attacker_civ_id, defender_civ_id, civ_id, data_json
+                  attacker_civ_id, defender_civ_id, civ_id, structure_id,
+                  subregion_id, data_json
              FROM events WHERE export_id = ? ORDER BY year, seconds72""",
         (export_hasta,),
-    ):
-        if row["event_id"] in ids_antes:
-            continue
+    ) if r["event_id"] not in ids_antes]
+    narrador.preparar(crudos)
+
+    nuevos_eventos = []
+    for row in crudos:
         detalles = load_json(row["data_json"])
         for clave in ("id", "type", "year", "seconds72"):
             detalles.pop(clave, None)
@@ -354,6 +368,7 @@ def diff(
                 "id": row["event_id"],
                 "anyo": row["year"],
                 "tipo": row["type"],
+                "frase": narrador.frase(row),
                 "site_id": row["site_id"],
                 "sitio": coords.get(row["site_id"], (None, None, None))[2],
                 "hfid": row["hfid"],

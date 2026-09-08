@@ -9,7 +9,9 @@ from fastapi import APIRouter, Query
 
 from .. import db as dbmod
 from ..errors import NotFoundError
+from ..model import diccionario as D
 from ..parser import legends as L
+from . import common
 from .common import (
     Conn,
     color_de,
@@ -82,6 +84,7 @@ def mapa(export_id: int, conn: sqlite3.Connection = Conn):
                 "id": eid,
                 "nombre": ent["name"],
                 "tipo": ent["type"],
+        "tipo_legible": D.entidad(ent["type"]),
                 "raza": ent["race"],
                 "raiz": ent["root_id"],
                 "color": ent["color"],
@@ -277,7 +280,8 @@ def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
             ORDER BY year, seconds72 LIMIT ?""",
         (export_id, site_id, limite_eventos),
     )
-    eventos = [event_payload(e) for e in eventos_raw]
+    eventos = common.narrar(conn, export_id, eventos_raw,
+                            [event_payload(e) for e in eventos_raw])
     nombres_hf = hf_names(
         conn, export_id, [e["hfid"] for e in eventos] + [e["slayer_hfid"] for e in eventos]
     )
@@ -291,6 +295,8 @@ def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
             WHERE export_id = ? AND site_id = ? ORDER BY structure_id""",
         (export_id, site_id),
     )
+    for e in estructuras:
+        e["tipo_legible"] = D.estructura(e["type"])
     artefactos = dbmod.all_(
         conn,
         "SELECT artifact_id, name, item FROM artifacts WHERE export_id = ? AND site_id = ?",
@@ -311,6 +317,7 @@ def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
         "id": sitio["site_id"],
         "nombre": sitio["name"],
         "tipo": sitio["type"],
+        "tipo_legible": D.sitio(sitio["type"]),
         "capa": L.site_layer(sitio["type"]),
         "coordenadas": {"x": sitio["coord_x"], "y": sitio["coord_y"]},
         "rectangulo": sitio["rectangle"],
@@ -466,6 +473,7 @@ def listar_colecciones(
     entidades = entity_index(conn, export_id)
     nombres = site_names(conn, export_id, [f["site_id"] for f in filas])
     for fila in filas:
+        fila["tipo_legible"] = D.coleccion(fila["type"])
         fila["sitio"] = nombres.get(fila["site_id"])
         for lado in ("attacking_enid", "defending_enid"):
             ent = entidades.get(fila[lado])
@@ -475,4 +483,6 @@ def listar_colecciones(
         "SELECT type, COUNT(*) n FROM event_collections WHERE export_id = ? GROUP BY type ORDER BY n DESC",
         (export_id,),
     )
+    for t in tipos:
+        t["legible"] = D.coleccion(t["type"])
     return {"colecciones": filas, "tipos": tipos}

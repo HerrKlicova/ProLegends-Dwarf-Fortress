@@ -22,7 +22,7 @@ const Fortaleza = (() => {
       el('div', { class: 'ficha-cabecera' }, [
         el('h3', {}, [
           document.createTextNode(r.sitio ? (r.sitio.nombre || 'Sin nombre') : 'Fortaleza'),
-          el('span', { class: 'tipo', text: r.sitio ? `  ${r.sitio.tipo || ''} · (${r.sitio.x}, ${r.sitio.y})` : '' }),
+          el('span', { class: 'tipo', text: r.sitio ? `  ${r.sitio.tipo_legible || r.sitio.tipo || ''} · (${r.sitio.x}, ${r.sitio.y})` : '' }),
         ]),
         el('div', { class: 'tipo' }, [
           document.createTextNode(
@@ -43,7 +43,7 @@ const Fortaleza = (() => {
       ]),
 
       n ? novedades(n, d) : el('p', { class: 'nota', text:
-        'Solo hay un export de este mundo. Cuando importes otro más reciente aparecera aquí que ha cambiado.' }),
+        'Solo hay un export de este mundo. Cuando importes otro más reciente, aquí aparecerá lo que haya cambiado.' }),
 
       avisos(a),
 
@@ -64,15 +64,13 @@ const Fortaleza = (() => {
         ]))) : null,
 
       (r.caravanas || []).length ? UI.bloque('Caravanas recibidas',
-        UI.tabla(['Año', 'Suceso', 'Datos del archivo'], r.caravanas.map((c) => [
-          String(UI.anyo(c.anyo)), UI.tipoLegible(c.tipo),
-          el('span', { class: 'nota', text: UI.detallesTexto(c.detalles) }),
+        UI.tabla(['Año', 'Qué pasó'], r.caravanas.map((c) => [
+          String(UI.anyo(c.anyo)), UI.suceso(c),
         ]))) : null,
 
       (r.ataques || []).length ? UI.bloque('Ataques registrados',
-        UI.tabla(['Año', 'Suceso', 'Datos del archivo'], r.ataques.map((c) => [
-          String(UI.anyo(c.anyo)), UI.tipoLegible(c.tipo),
-          el('span', { class: 'nota', text: UI.detallesTexto(c.detalles) }),
+        UI.tabla(['Año', 'Qué pasó'], r.ataques.map((c) => [
+          String(UI.anyo(c.anyo)), UI.suceso(c),
         ]))) : null,
 
       (r.habitantes && r.habitantes.lista_vivos.length) ? UI.bloque(
@@ -115,7 +113,7 @@ const Fortaleza = (() => {
     const bloques = secciones.filter(([, lista]) => lista && lista.length).map(([titulo, lista, clase]) =>
       UI.bloque(`${titulo} (${lista.length})`, ...lista.slice(0, 60).map((ev) =>
         el('div', { class: clase }, [
-          el('strong', { text: `Año ${UI.anyo(ev.anyo)} · ${UI.tipoLegible(ev.tipo)}` }),
+          el('strong', { text: `Año ${UI.anyo(ev.anyo)} · ${UI.sucesoTexto(ev)}` }),
           ev.sitio ? el('span', { text: ` en ${ev.sitio}` }) : null,
           ev.distancia !== null && ev.distancia !== undefined && ev.distancia > 0
             ? el('span', { class: 'nota', text: ` (a ${ev.distancia} casillas)` }) : null,

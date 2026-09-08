@@ -58,6 +58,29 @@ def _linea_evento(fila: dict, nombres_hf: dict, nombres_sitio: dict, nombres_ent
 
 
 def _decorar(conn: sqlite3.Connection, export_id: int, filas: list[dict]) -> list[str]:
+    """Convierte las filas de evento en las líneas que se le mandan a la IA.
+
+    Desde la 1.5.0 se le manda la frase ya narrada, no el volcado de campos:
+    «Iden Craftshailed murió por un golpe a manos de Uthhkos Lusbomith en
+    Kolluslan» en vez de «159 | hf died | hfid=105 | cause=STRUCK». El modelo
+    escribe mejor cuando lee bien, y de paso el contexto ocupa menos.
+    """
+    from ..model.narrador import Narrador
+
+    try:
+        narrador = Narrador(conn, export_id)
+        narrador.preparar(filas)
+        salida = []
+        for fila in filas:
+            frase = narrador.frase(fila)
+            salida.append(f"{fila.get('year')} | {frase}")
+        return salida
+    except Exception:  # pragma: no cover - si algo falla, se manda lo de antes
+        pass
+    return _decorar_crudo(conn, export_id, filas)
+
+
+def _decorar_crudo(conn: sqlite3.Connection, export_id: int, filas: list[dict]) -> list[str]:
     from ..api.common import hf_names, site_names
 
     hfs = hf_names(
@@ -228,7 +251,7 @@ def a_texto(contexto: dict) -> str:
             f"(se listan {contexto.get('eventos_incluidos', 0)})"
         )
     lineas.append("")
-    lineas.append("## Hechos registrados (anyo | tipo | detalles)")
+    lineas.append("## Hechos registrados (año | qué pasó)")
     lineas.extend(contexto.get("hechos", []))
     return "\n".join(lineas)
 

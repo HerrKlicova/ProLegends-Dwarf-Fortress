@@ -10,6 +10,63 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.5.0 — Que se entienda
+
+*La versión que más cambia la sensación de usar el programa.*
+
+Hasta ahora ProLegends te enseñaba el vocabulario interno de Dwarf Fortress en
+crudo. Una línea de la ficha de una figura decía:
+
+```
+159   Hf died   attacker_civ_id: 1 · cause: STRUCK · hfid: 105 · slayer_hfid: 121
+```
+
+Y ahora dice:
+
+> **159** — Iden Craftshailed murió por un golpe a manos de Uthhkos Lusbomith
+> en Kolluslan.
+
+**Añadido**
+
+- **Los sucesos se cuentan en castellano.** Hay una plantilla de narración para
+  **127 tipos de suceso**: muertes, fundaciones, conquistas, asedios, cargos,
+  bodas y parentescos, robos, secuestros, esclavitudes, artefactos creados y
+  perdidos, secretos aprendidos, intrigas, derrocamientos, levantamientos,
+  obras maestras, ceremonias, caravanas, descubrimientos, cumbres coronadas...
+- **Un diccionario de 418 términos** de DF a castellano: tipos de sitio, causas
+  de muerte, cargos, vínculos entre personas, con entidades y con lugares,
+  oficios, habilidades, esferas divinas, objetivos vitales, secretos, biomas,
+  tipos de estructura y de entidad, clases de figura.
+- **Interruptor «ver también el dato en bruto»**, encima de cada lista de
+  sucesos, para cuando quieras comprobar algo. Se recuerda en tu navegador.
+- Todo lo demás de las fichas va también traducido: el tipo de sitio, la clase
+  de figura, las esferas, los objetivos, las habilidades, los cargos y los
+  vínculos.
+
+**Las dos reglas que no se rompen**
+
+1. **No se inventa nada.** Si el suceso no dice dónde pasó, la frase no dice
+   dónde pasó. Si una figura murió de vejez pero el archivo trae además un
+   causante, no se cuenta como un crimen.
+2. **No se esconde nada.** Un tipo de suceso sin plantilla no desaparece: se
+   cuenta con la fórmula genérica, y el dato original sigue estando a un clic.
+   Un término que no esté en el diccionario se enseña tal cual, solo que
+   peinado (`DARK_FORTRESS` → `Dark fortress`).
+
+**De regalo: las crónicas mejoran solas**
+
+A la IA se le mandaba `159 | hf died | hfid=105 | cause=STRUCK`. Ahora se le
+manda la frase ya contada. Escribe mejor quien lee mejor, y de paso cabe más
+historia en el mismo espacio.
+
+**En la autocomprobación**: que una muerte se cuente entera, que sin datos no
+se rellene con nada, que morir de vejez no sea morir a manos de nadie, que un
+tipo desconocido se siga contando, que **las 127 plantillas aguanten un suceso
+vacío sin romperse**, y que sobre 400 sucesos de un export real no se cuele ni
+un identificador suelto.
+
+---
+
 ## v1.4.4 — Los ríos, esta vez con el dato delante
 
 *El arreglo de verdad, con el XML a la vista.*

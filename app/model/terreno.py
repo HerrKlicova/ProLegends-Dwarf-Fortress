@@ -18,6 +18,7 @@ import sqlite3
 from typing import Iterable, Optional
 
 from .. import db as dbmod
+from . import diccionario
 
 # Un carácter por casilla: así la rejilla entera de un mundo grande viaja en un
 # solo texto en vez de en 66.000 números.
@@ -132,7 +133,8 @@ def terreno(conn: sqlite3.Connection, export_id: int) -> dict:
             catalogo.append(tipo)
         pares = _primer_coord(datos if isinstance(datos, dict) else {})
         ficha.append({"id": region["region_id"], "nombre": _texto(region["name"]),
-                      "tipo": tipo, "casillas": len(pares)})
+                      "tipo": tipo, "tipo_legible": diccionario.region(tipo),
+                      "casillas": len(pares)})
         if not pares:
             sin_coords += 1
             continue
@@ -153,6 +155,7 @@ def terreno(conn: sqlite3.Connection, export_id: int) -> dict:
         ),
         **limites,
         "biomas": catalogo,
+        "biomas_legibles": [diccionario.region(b) for b in catalogo],
         "rejilla": rejilla,
         "regiones": ficha,
         "regiones_sin_coordenadas": sin_coords,

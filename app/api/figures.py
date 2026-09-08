@@ -9,6 +9,8 @@ from fastapi import APIRouter, Query
 
 from .. import db as dbmod
 from ..errors import NotFoundError
+from ..model import diccionario as D
+from . import common
 from .common import (
     Conn,
     color_de,
@@ -148,6 +150,8 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
                 "tipo_entidad": ent["type"] if ent else None,
                 "raza": ent["race"] if ent else None,
                 "vinculo": row["link_type"],
+                "vinculo_legible": D.vinculo_ent(row["link_type"]),
+                "tipo_entidad_legible": D.entidad(ent["type"]) if ent else None,
                 "fuerza": row["link_strength"],
                 "antiguo": bool(row["former"]),
             }
@@ -160,7 +164,9 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         (export_id, hf_id),
     ):
         relaciones.append(
-            {"hf_id": row["other_hf_id"], "vinculo": row["link_type"], "fuerza": row["link_strength"]}
+            {"hf_id": row["other_hf_id"], "vinculo": row["link_type"],
+             "vinculo_legible": D.vinculo_hf(row["link_type"]),
+             "fuerza": row["link_strength"]}
         )
         otros.append(row["other_hf_id"])
     nombres = hf_names(conn, export_id, otros)
@@ -188,6 +194,9 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
             ORDER BY total_ip DESC""",
         (export_id, hf_id),
     )
+    for h in habilidades:
+        h["legible"] = D.habilidad(h["skill"])
+
     rasgos: dict[str, list[str]] = {}
     for row in conn.execute(
         "SELECT kind, value FROM hf_traits WHERE export_id = ? AND hf_id = ?", (export_id, hf_id)
@@ -202,6 +211,7 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
     nombres_sitio = site_names(conn, export_id, [v["site_id"] for v in vinculos_sitio])
     for v in vinculos_sitio:
         v["nombre"] = nombres_sitio.get(v["site_id"])
+        v["legible"] = D.vinculo_sitio(v["link_type"])
 
     artefactos = dbmod.all_(
         conn,
@@ -228,11 +238,14 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
             WHERE a.export_id = ? AND a.hfid = ?""",
         (export_id, hf_id),
     )
+    for c in cargos:
+        c["cargo_legible"] = D.cargo(c["cargo"])
 
     # Un OR entre dos columnas indexadas impide usar los indices: se piden por
     # separado y se mezclan aquí.
     eventos_raw = _eventos_de_figura(conn, export_id, hf_id, limite_eventos)
-    eventos = [event_payload(e) for e in eventos_raw]
+    eventos = common.narrar(conn, export_id, eventos_raw,
+                            [event_payload(e) for e in eventos_raw])
     nombres_ev = hf_names(
         conn, export_id, [e["hfid"] for e in eventos] + [e["slayer_hfid"] for e in eventos]
     )
@@ -262,6 +275,18 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
             detalles.pop(clave, None)
         muerte["detalles"] = {k: v for k, v in detalles.items() if v not in (None, "", [], {})}
         muerte["asesino"] = hf_names(conn, export_id, [muerte["slayer_hfid"]]).get(muerte["slayer_hfid"])
+        # La misma frase que en la lista de sucesos, para no contar la muerte
+        # de dos maneras distintas en la misma ficha.
+        cruda = dbmod.one(
+            conn,
+            """SELECT event_id, year, type, site_id, civ_id, hfid, slayer_hfid,
+                      attacker_civ_id, defender_civ_id, artifact_id, structure_id,
+                      subregion_id, data_json
+                 FROM events WHERE export_id = ? AND event_id = ?""",
+            (export_id, muerte["event_id"]),
+        )
+        if cruda:
+            muerte["frase"] = common.narrar(conn, export_id, [cruda], [{}])[0]["frase"]
 
     datos = load_json(fig["data_json"])
     return {
@@ -275,6 +300,7 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         "vive": bool(fig["alive"]),
         "aparecio": fig["appeared"],
         "tipo": fig["associated_type"],
+        "tipo_legible": D.tipo_figura(fig["associated_type"]),
         "banderas": {
             "deidad": bool(fig["is_deity"]),
             "fuerza": bool(fig["is_force"]),
@@ -288,8 +314,11 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         "habilidades": habilidades,
         "deidades": deidades,
         "esferas": rasgos.get("sphere", []),
+        "esferas_legibles": [D.esfera(x) for x in rasgos.get("sphere", [])],
         "objetivos": rasgos.get("goal", []),
+        "objetivos_legibles": [D.objetivo(x) for x in rasgos.get("goal", [])],
         "secretos": rasgos.get("secreto", []),
+        "secretos_legibles": [D.secreto(x) for x in rasgos.get("secreto", [])],
         "interacciones": rasgos.get("interaccion", []),
         "profesiones": rasgos.get("profesion", []),
         "cargos": cargos,

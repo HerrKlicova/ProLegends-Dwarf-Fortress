@@ -177,7 +177,7 @@ requisito: no hace falta para nada.
 
 ---
 
-## v1.5.0 — Que se entienda
+## v1.5.0 — Que se entienda ✅ HECHO
 
 > El arreglo de fondo para lo de «la interfaz es infumable».
 
@@ -213,6 +213,11 @@ arreglo de las crónicas (v1.8), y hacerlo una vez es mejor que hacerlo dos.
 **Riesgos.** DF tiene cientos de tipos de evento. No se van a cubrir todos de
 golpe: se empieza por los cincuenta más frecuentes, que cubrirán la inmensa
 mayoría de lo que ves, y el resto sigue mostrándose como ahora.
+
+**Cómo quedó.** 127 plantillas de narración y 418 términos de diccionario, con
+el interruptor de «ver el dato en bruto» y las dos reglas intactas: no inventar
+y no esconder. El diccionario se puede seguir ampliando sin tocar nada más: es
+añadir entradas a una tabla.
 
 **Tamaño.** Medio-grande, pero muy troceable. Se puede ir ampliando el
 diccionario poco a poco.

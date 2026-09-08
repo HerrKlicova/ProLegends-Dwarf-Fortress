@@ -641,7 +641,7 @@ const Mapa = (() => {
     return el('div', {}, [
       el('div', { class: 'ficha-cabecera' }, [
         el('h3', { text: s.nombre || 'Sin nombre' }),
-        el('div', { class: 'tipo', text: `${s.tipo || 'tipo desconocido'} · (${s.coordenadas.x}, ${s.coordenadas.y})` }),
+        el('div', { class: 'tipo', text: `${s.tipo_legible || s.tipo || 'tipo desconocido'} · (${s.coordenadas.x}, ${s.coordenadas.y})` }),
       ]),
       UI.datos([
         ['Estado', s.estado],
@@ -656,7 +656,7 @@ const Mapa = (() => {
       UI.bloque('Propietarios a lo largo del tiempo', propietarios),
       s.estructuras.length ? UI.bloque('Estructuras',
         el('div', { class: 'chips' }, s.estructuras.map((e) =>
-          el('span', { class: 'chip', text: `${e.name || e.type || '?'}${e.type && e.name ? ' (' + e.type + ')' : ''}` })))) : null,
+          el('span', { class: 'chip', text: `${e.name || e.tipo_legible || e.type || '?'}${e.type && e.name ? ' (' + (e.tipo_legible || e.type) + ')' : ''}` })))) : null,
       s.artefactos.length ? UI.bloque('Artefactos aquí',
         el('div', { class: 'chips' }, s.artefactos.map((a) => el('span', { class: 'chip', text: a.name })))) : null,
       s.habitantes.length ? UI.bloque(`Figuras vinculadas (${s.habitantes.length})`,
@@ -664,10 +664,10 @@ const Mapa = (() => {
           el('span', { class: 'enlace', text: h.name || '?', onclick: () => App.irAFigura(h.hf_id) }),
           h.race || '—', (h.link_type || '') + (h.alive ? '' : ' (fallecida)'),
         ]))) : null,
-      s.eventos.length ? UI.bloque(`Eventos ocurridos aquí (${s.eventos.length}${s.eventos_truncados ? '+' : ''})`,
-        UI.tabla(['Año', 'Suceso', 'Detalles'], s.eventos.map((ev) => [
-          String(UI.anyo(ev.anyo)), UI.tipoLegible(ev.tipo),
-          el('span', { class: 'nota', text: [ev.hf, ev.asesino ? '→ ' + ev.asesino : '', UI.detallesTexto(ev.detalles)].filter(Boolean).join(' · ') }),
+      s.eventos.length ? UI.bloque(`Lo que pasó aquí (${s.eventos.length}${s.eventos_truncados ? '+' : ''})`,
+        UI.interruptorBruto(() => abrirSitio(s.id)),
+        UI.tabla(['Año', 'Qué pasó'], s.eventos.map((ev) => [
+          String(UI.anyo(ev.anyo)), UI.suceso(ev),
         ]))) : el('p', { class: 'nota', text: 'No hay eventos registrados en este sitio.' }),
     ]);
   }

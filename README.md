@@ -232,6 +232,20 @@ Si a un export le faltan las coordenadas de las regiones, **no se inventa una
 costa**: se dice que no se puede dibujar y por qué, y el mapa se queda en la
 rejilla de siempre.
 
+### Todo se cuenta en castellano
+
+Los sucesos no se enseñan como los escribe Dwarf Fortress, sino contados:
+
+> **159** — Iden Craftshailed murió por un golpe a manos de Uthhkos Lusbomith
+> en Kolluslan.
+
+Hay narración para 127 tipos de suceso y un diccionario de 418 términos (tipos
+de sitio, causas de muerte, cargos, vínculos, oficios, habilidades, esferas,
+biomas...). Con dos reglas: **no se inventa nada** —si el archivo no lo dice, la
+frase no lo dice— y **no se esconde nada** —lo que no tiene traducción se enseña
+tal cual, y el dato original está siempre a un clic con el interruptor *ver
+también el dato en bruto*—.
+
 ### Figuras históricas
 Buscador por nombre, con filtros de raza y de vivas/muertas. La ficha trae raza,
 sexo, nacimiento, muerte y cómo murió, entidades a las que pertenece y pertenecía,

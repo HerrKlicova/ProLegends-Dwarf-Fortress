@@ -36,6 +36,43 @@ const UI = (() => {
     return tipo.charAt(0).toUpperCase() + tipo.slice(1).replace(/_/g, ' ');
   }
 
+  /* ¿Se enseña el dato en bruto junto a la frase? Es una preferencia de la
+     persona, así que se recuerda en este navegador. */
+  let verCrudo = false;
+  try { verCrudo = localStorage.getItem('prolegends-crudo') === 'si'; } catch (e) { /* da igual */ }
+
+  const enBruto = () => verCrudo;
+
+  function cambiarBruto(valor) {
+    verCrudo = !!valor;
+    try { localStorage.setItem('prolegends-crudo', verCrudo ? 'si' : 'no'); } catch (e) { /* da igual */ }
+  }
+
+  /* Un evento contado como una frase. Debajo, y solo si se pide, el dato tal
+     como viene del XML: la frase es una lectura, el dato es la fuente. */
+  function sucesoTexto(ev) {
+    return ev.frase || (tipoLegible(ev.tipo) + (ev.detalles ? ' · ' + detallesTexto(ev.detalles) : ''));
+  }
+
+  function suceso(ev) {
+    const crudo = [tipoLegible(ev.tipo), detallesTexto(ev.detalles)].filter(Boolean).join(' · ');
+    return el('div', {}, [
+      el('span', { text: sucesoTexto(ev) }),
+      verCrudo && crudo ? el('div', { class: 'crudo', text: crudo }) : null,
+    ]);
+  }
+
+  /* La casilla para verlo, que se pone encima de cada lista de sucesos. */
+  function interruptorBruto(alCambiar) {
+    return el('label', { class: 'capa crudo-interruptor' }, [
+      el('input', {
+        type: 'checkbox', checked: verCrudo ? 'checked' : null,
+        onchange: (e) => { cambiarBruto(e.target.checked); if (alCambiar) alCambiar(); },
+      }),
+      el('span', { text: 'Ver también el dato en bruto' }),
+    ]);
+  }
+
   const anyo = (v) => (v === null || v === undefined || v === -1 ? '?' : v);
 
   function detallesTexto(detalles) {
@@ -109,5 +146,6 @@ const UI = (() => {
     el('div', { class: 'bloque' }, [el('h4', { text: titulo }), ...contenido.flat()]);
 
   return { el, poner, vaciar, tipoLegible, anyo, detallesTexto, aviso, limpiarAviso,
+           suceso, sucesoTexto, interruptorBruto, enBruto,
            fallo, confirmar, tabla, datos, bloque };
 })();

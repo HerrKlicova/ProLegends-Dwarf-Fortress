@@ -209,6 +209,9 @@ pre.consola { background: #0d0c0a; border: 1px solid var(--borde); border-radius
   border: 1px solid var(--borde); border-radius: 4px; padding: .5rem;
   font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: .72rem;
   line-height: 1.45; white-space: pre; resize: vertical; }
+.crudo { color: var(--texto-suave); font-size: .72rem; margin-top: .15rem;
+  font-family: ui-monospace, Consolas, "Courier New", monospace; word-break: break-word; }
+.crudo-interruptor { font-size: .74rem; color: var(--texto-suave); margin: .2rem 0 .5rem; }
 .botonera { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; align-items: center; }
 input.ruta { flex: 1; min-width: 0; background: var(--fondo-3); color: var(--texto);
   border: 1px solid var(--borde); border-radius: 4px; padding: .3rem .45rem;

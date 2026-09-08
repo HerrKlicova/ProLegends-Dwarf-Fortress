@@ -781,6 +781,88 @@ console.log(salida.join('\\n'));
             comprobar(alturas == sorted(alturas, reverse=True),
                       "y con la altura bajando río abajo, que es como se sabe hacia dónde corre")
 
+        print("\n18. Los sucesos se cuentan en castellano")
+        from app.model import diccionario as DIC  # noqa: E402
+        from app.model.narrador import Narrador, PLANTILLAS, cobertura  # noqa: E402
+
+        cob = cobertura()
+        comprobar(cob["con_plantilla"] >= 100,
+                  f"hay plantilla para {cob['con_plantilla']} tipos de suceso")
+        comprobar(cob["terminos"] >= 300,
+                  f"el diccionario tiene {cob['terminos']} términos")
+
+        nombres = {
+            "hf": {105: "Iden Craftshailed", 121: "Uthhkos Lusbomith"},
+            "sitio": {7: "Kolluslan"},
+            "entidad": {1: "The Orbom of Zasuth", 2: "The Ngomuz of Onoloth"},
+            "artefacto": {3: "Puñal de Zasuth"}, "estructura": {}, "region": {},
+        }
+
+        def frase(fila, datos=None):
+            from app.model.narrador import Contexto, generica
+            c = Contexto(fila, datos or {}, nombres)
+            plantilla = PLANTILLAS.get(c.tipo)
+            return plantilla(c) if plantilla else generica(c)
+
+        dicho = frase({"year": 159, "type": "hf died", "hfid": 105,
+                       "slayer_hfid": 121, "site_id": 7}, {"cause": "STRUCK"})
+        comprobar(dicho == "Iden Craftshailed murió por un golpe a manos de "
+                           "Uthhkos Lusbomith en Kolluslan.",
+                  f"una muerte se cuenta entera: «{dicho}»")
+
+        # Un dato ausente no se rellena con nada.
+        pelada = frase({"year": 3, "type": "hf died", "hfid": 105}, {})
+        comprobar(pelada == "Iden Craftshailed murió.",
+                  f"y sin causa ni lugar, no se inventan: «{pelada}»")
+
+        # Una muerte natural con un matador en el dato no se cuenta como crimen.
+        vejez = frase({"year": 80, "type": "hf died", "hfid": 105, "slayer_hfid": 121},
+                      {"cause": "OLD_AGE"})
+        comprobar("a manos de" not in vejez,
+                  f"morir de vejez no es morir a manos de nadie: «{vejez}»")
+
+        # Un tipo desconocido no desaparece: se cuenta como se puede.
+        rara = frase({"year": 9, "type": "algo que no conozco", "hfid": 105, "site_id": 7}, {})
+        comprobar("Iden Craftshailed" in rara and "Kolluslan" in rara and rara.endswith("."),
+                  f"un suceso sin plantilla se sigue contando: «{rara}»")
+
+        # Ninguna plantilla puede tumbar una ficha, ni con datos absurdos.
+        rotas = 0
+        for tipo in PLANTILLAS:
+            try:
+                salida = frase({"year": None, "type": tipo}, {})
+                if not isinstance(salida, str) or not salida.strip():
+                    rotas += 1
+            except Exception:
+                rotas += 1
+        comprobar(rotas == 0,
+                  f"las {len(PLANTILLAS)} plantillas aguantan un evento vacío ({rotas} fallan)")
+
+        # El diccionario nunca esconde un término: si no lo conoce, lo enseña.
+        comprobar(DIC.sitio("dark fortress") == "fortaleza oscura",
+                  "los términos conocidos se traducen")
+        comprobar(DIC.sitio("BICHO_RARO") == "Bicho raro",
+                  "y los desconocidos se enseñan limpios, no se ocultan")
+        comprobar(DIC.muerte("OLD_AGE") == "de vejez" and DIC.cargo("MONARCH") == "monarca",
+                  "causas de muerte y cargos también")
+
+        # Y sobre datos de verdad, salidos de un export importado.
+        filas_ev = [dict(r) for r in conn.execute(
+            """SELECT event_id, year, type, site_id, civ_id, hfid, slayer_hfid,
+                      attacker_civ_id, defender_civ_id, artifact_id, structure_id,
+                      subregion_id, data_json
+                 FROM events WHERE export_id = 1 LIMIT 400""")]
+        if filas_ev:
+            narrador = Narrador(conn, 1)
+            frases = narrador.narrar(filas_ev)
+            comprobar(all(f and f.endswith(".") for f in frases),
+                      f"las {len(frases)} frases de un export real salen completas")
+            comprobar(not any("None" in f or "hfid" in f for f in frases),
+                      "y ninguna se cuela con identificadores o huecos vacíos")
+            con_nombre = sum(1 for f in frases if any(c.isupper() for c in f[1:]))
+            comprobar(con_nombre > len(frases) * 0.5,
+                      f"la mayoría nombran a alguien o algo ({con_nombre} de {len(frases)})")
+
         conn.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
