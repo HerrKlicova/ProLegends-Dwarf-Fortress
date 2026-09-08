@@ -105,7 +105,11 @@ def _decorar_crudo(conn: sqlite3.Connection, export_id: int, filas: list[dict]) 
 
 
 def contexto_anyos(conn: sqlite3.Connection, export_id: int, desde: int, hasta: int) -> dict:
-    marcas = ",".join("?" * len(TIPOS_DESTACADOS))
+    from ..model.narrador import variantes
+
+    # Cada tipo puede venir escrito de varias formas segun el export.
+    tipos = sorted({f for t in TIPOS_DESTACADOS for f in variantes(t)})
+    marcas = ",".join("?" * len(tipos))
     filas = dbmod.all_(
         conn,
         f"""SELECT event_id, year, type, site_id, hfid, slayer_hfid, civ_id,
@@ -113,7 +117,7 @@ def contexto_anyos(conn: sqlite3.Connection, export_id: int, desde: int, hasta: 
               FROM events
              WHERE export_id = ? AND year BETWEEN ? AND ? AND type IN ({marcas})
              ORDER BY year, seconds72 LIMIT ?""",
-        (export_id, desde, hasta, *TIPOS_DESTACADOS, MAX_EVENTOS),
+        (export_id, desde, hasta, *tipos, MAX_EVENTOS),
     )
     total = conn.execute(
         "SELECT COUNT(*) FROM events WHERE export_id = ? AND year BETWEEN ? AND ?",

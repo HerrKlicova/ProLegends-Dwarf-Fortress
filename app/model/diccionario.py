@@ -46,6 +46,13 @@ def traducir(termino: Optional[str], tabla: dict) -> str:
     alto = clave.upper()
     if alto in tabla:
         return tabla[alto]
+    # Los códigos de DF llevan guion bajo ("GIANT_CAVE_SPIDER") y las tablas se
+    # escriben con espacios: se prueba también con esa forma antes de rendirse.
+    plano = " ".join(clave.replace("_", " ").lower().split())
+    if plano in tabla:
+        return tabla[plano]
+    if plano.upper() in tabla:
+        return tabla[plano.upper()]
     return limpiar(clave)
 
 
@@ -200,6 +207,7 @@ VINCULOS_HF = {
     "mother": "madre",
     "father": "padre",
     "child": "hijo o hija",
+    "parent": "padre o madre",
     "sibling": "hermano o hermana",
     "lover": "amante",
     "friend": "amistad",
@@ -567,6 +575,163 @@ TABLAS = {
 }
 
 
+
+# ------------------------------------------------------------------- razas
+# Los nombres de criatura vienen en el código interno de DF ("DWARF"). Aquí
+# están las que salen en casi todos los mundos; lo que no esté en la tabla se
+# enseña peinado pero sin traducir, que es mejor que inventarse un nombre.
+RAZAS = {
+    "dwarf": "enano",
+    "human": "humano",
+    "elf": "elfo",
+    "goblin": "goblin",
+    "kobold": "kóbold",
+    "animal person": "persona animal",
+    "gremlin": "gremlin",
+    "troll": "trol",
+    "ogre": "ogro",
+    "giant": "gigante",
+    "ettin": "etin",
+    "minotaur": "minotauro",
+    "cyclops": "cíclope",
+    "titan": "titán",
+    "demon": "demonio",
+    "night creature": "criatura de la noche",
+    "night troll": "trol nocturno",
+    "vampire": "vampiro",
+    "werebeast": "hombre bestia",
+    "forgotten beast": "bestia olvidada",
+    "hydra": "hidra",
+    "dragon": "dragón",
+    "roc": "roc",
+    "griffon": "grifo",
+    "unicorn": "unicornio",
+    "phoenix": "fénix",
+    "bronze colossus": "coloso de bronce",
+    "iron man": "hombre de hierro",
+    "blizzard man": "hombre de las nieves",
+    "yeti": "yeti",
+    "harpy": "arpía",
+    "zombie": "zombi",
+    "skeleton": "esqueleto",
+    "ghost": "fantasma",
+    "mummy": "momia",
+    "bogeyman": "coco",
+    "elephant": "elefante",
+    "horse": "caballo",
+    "pony": "poni",
+    "donkey": "burro",
+    "mule": "mula",
+    "cow": "vaca",
+    "bull": "toro",
+    "yak": "yak",
+    "water buffalo": "búfalo de agua",
+    "sheep": "oveja",
+    "goat": "cabra",
+    "pig": "cerdo",
+    "dog": "perro",
+    "cat": "gato",
+    "chicken": "gallina",
+    "turkey": "pavo",
+    "duck": "pato",
+    "goose": "ganso",
+    "guineafowl": "pintada",
+    "peafowl": "pavo real",
+    "rabbit": "conejo",
+    "llama": "llama",
+    "alpaca": "alpaca",
+    "camel": "camello",
+    "reindeer": "reno",
+    "moose": "alce",
+    "deer": "ciervo",
+    "elk": "uapití",
+    "boar": "jabalí",
+    "wolf": "lobo",
+    "fox": "zorro",
+    "bear": "oso",
+    "grizzly bear": "oso pardo",
+    "black bear": "oso negro",
+    "polar bear": "oso polar",
+    "cave bear": "oso de las cavernas",
+    "lion": "león",
+    "tiger": "tigre",
+    "leopard": "leopardo",
+    "jaguar": "jaguar",
+    "cheetah": "guepardo",
+    "hyena": "hiena",
+    "crocodile": "cocodrilo",
+    "alligator": "caimán",
+    "snake": "serpiente",
+    "giant cave spider": "araña gigante de las cavernas",
+    "cave spider": "araña de las cavernas",
+    "spider": "araña",
+    "scorpion": "escorpión",
+    "bat": "murciélago",
+    "rat": "rata",
+    "mouse": "ratón",
+    "cave swallow": "golondrina de las cavernas",
+    "raven": "cuervo",
+    "eagle": "águila",
+    "hawk": "halcón",
+    "owl": "búho",
+    "whale": "ballena",
+    "shark": "tiburón",
+    "carp": "carpa",
+    "pike": "lucio",
+    "sturgeon": "esturión",
+    "octopus": "pulpo",
+    "crab": "cangrejo",
+    "toad": "sapo",
+    "frog": "rana",
+    "lizard": "lagarto",
+    "turtle": "tortuga",
+    "olm": "olm",
+    "cave fish": "pez de las cavernas",
+    "cave crocodile": "cocodrilo de las cavernas",
+    "cave dragon": "dragón de las cavernas",
+    "giant": "gigante",
+    "mountain goat": "cabra montesa",
+    "badger": "tejón",
+    "wolverine": "glotón",
+    "otter": "nutria",
+    "beaver": "castor",
+    "monkey": "mono",
+    "gorilla": "gorila",
+    "chimpanzee": "chimpancé",
+    "orangutan": "orangután",
+    "hippo": "hipopótamo",
+    "rhinoceros": "rinoceronte",
+    "giraffe": "jirafa",
+    "zebra": "cebra",
+    "buzzard": "buitre",
+    "vulture": "buitre",
+    "warthog": "facóquero",
+    "antelope": "antílope",
+    "gazelle": "gacela",
+    "capybara": "capibara",
+    "armadillo": "armadillo",
+    "porcupine": "puercoespín",
+    "sloth": "perezoso",
+    "anteater": "oso hormiguero",
+    "walrus": "morsa",
+    "seal": "foca",
+    "penguin": "pingüino",
+}
+
+TABLAS["razas"] = RAZAS
+
+
+# ------------------------------------------------------------------- castas
+CASTAS = {
+    "male": "varón",
+    "female": "mujer",
+    "default": "",
+    "none": "",
+}
+
+TABLAS["castas"] = CASTAS
+
+
 # ------------------------------------------------------------- atajos cómodos
 def sitio(t):        return traducir(t, SITIOS)          # noqa: E704
 def region(t):       return traducir(t, REGIONES)        # noqa: E704
@@ -585,3 +750,5 @@ def tipo_figura(t):  return traducir(t, TIPOS_FIGURA)    # noqa: E704
 def construccion(t): return traducir(t, CONSTRUCCIONES)  # noqa: E704
 def coleccion(t):    return traducir(t, COLECCIONES)     # noqa: E704
 def cargo(t):        return traducir(t, CARGOS)          # noqa: E704
+def raza(t):         return traducir(t, RAZAS)           # noqa: E704
+def casta(t):        return traducir(t, CASTAS)          # noqa: E704

@@ -139,12 +139,7 @@ const Mapa = (() => {
           onchange: (e) => { Atlas.opcion(id, e.target.checked); pintarTerreno(); dibujar(); },
         }),
         UI.el('span', { text: nombre }),
-      ])),
-      r.total > r.principales
-        ? UI.el('p', { class: 'nota', text:
-            'El grosor de cada río sale de su caudal, que viene en el export. '
-            + 'Los arroyos no se dibujan por defecto, igual que en el mapa del juego.' })
-        : null);
+      ])));
   }
 
   /* Qué terreno hay en este mundo y con qué color se ha pintado. Los nombres
@@ -170,8 +165,9 @@ const Mapa = (() => {
         ]),
         UI.el('span', { class: 'conteo', text: `${Math.round(t.casillas * 100 / total)}%` }),
       ])),
-      UI.el('button', { class: 'boton pequeno ancho', text: '¿El mapa no cuadra?',
-                        title: 'Enseña qué trae tu export sobre el mapa, tal cual viene',
+      UI.el('button', { class: 'boton pequeno ancho', text: '¿Algo no cuadra?',
+                        title: 'Enseña qué trae tu export de verdad: mapa, sucesos, '
+                               + 'relaciones y razas, tal cual vienen',
                         onclick: informeGeografia }));
   }
 
@@ -184,10 +180,11 @@ const Mapa = (() => {
 
     const area = UI.el('textarea', { class: 'volcado', readonly: 'readonly' });
     area.value = datos.texto || '(vacío)';
-    await UI.confirmar('Qué trae tu export sobre el mapa', [
+    await UI.confirmar('Qué trae tu export de verdad', [
       UI.el('p', { class: 'nota', text:
         `Sacado de ${datos.origen}. Esto es lo que hay de verdad en tus ficheros: ` +
-        'sirve para arreglar el mapa mirando el dato en vez de suponerlo.' }),
+        'el mapa, cómo se llama cada suceso, los vínculos entre figuras y las razas. ' +
+        'Sirve para arreglar lo que no cuadre mirando el dato en vez de suponerlo.' }),
       area,
       datos.fichero
         ? UI.el('p', { class: 'nota', text: `Guardado también en: ${datos.fichero}` })
@@ -662,10 +659,9 @@ const Mapa = (() => {
       s.habitantes.length ? UI.bloque(`Figuras vinculadas (${s.habitantes.length})`,
         UI.tabla(['Nombre', 'Raza', 'Vínculo'], s.habitantes.slice(0, 80).map((h) => [
           el('span', { class: 'enlace', text: h.name || '?', onclick: () => App.irAFigura(h.hf_id) }),
-          h.race || '—', (h.link_type || '') + (h.alive ? '' : ' (fallecida)'),
+          h.raza || h.race || '—', (h.vinculo_legible || h.link_type || '') + (h.alive ? '' : ' (fallecida)'),
         ]))) : null,
       s.eventos.length ? UI.bloque(`Lo que pasó aquí (${s.eventos.length}${s.eventos_truncados ? '+' : ''})`,
-        UI.interruptorBruto(() => abrirSitio(s.id)),
         UI.tabla(['Año', 'Qué pasó'], s.eventos.map((ev) => [
           String(UI.anyo(ev.anyo)), UI.suceso(ev),
         ]))) : el('p', { class: 'nota', text: 'No hay eventos registrados en este sitio.' }),

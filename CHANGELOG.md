@@ -10,6 +10,68 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.5.1 — Limpieza, y que las frases lleguen a todos los mundos
+
+*Ocho comentarios tuyos sobre la interfaz, contestados con código.*
+
+**Arreglado**
+
+- **Muchos sucesos se contaban con la fórmula genérica** («Rovod archurn —
+  hist figure died en clinchedglaze») aunque hubiera plantilla para ellos. El
+  motivo: cada export escribe el nombre del suceso a su manera —«hf died»,
+  «hist figure died», «change_hf_state», en mayúsculas o con guiones bajos— y
+  ProLegends solo reconocía una de esas formas. Ahora el nombre se normaliza
+  antes de buscar la frase, así que las tres formas llevan al mismo sitio. Lo
+  mismo se aplicó a las consultas a la base de datos, que preguntaban por
+  `type = 'hf died'` y se dejaban fuera media ficha de muerte.
+- **Faltaban 28 tipos de suceso**: guerras, batallas, duelos, razias, robos,
+  secuestros, expediciones, purgas, revueltas, persecuciones, situaciones
+  tácticas, experimentos atroces, cortejos rechazados... Ahora hay **155
+  plantillas**, que cubren todos los tipos que maneja LegendsViewer.
+- **El diccionario no reconocía los códigos con guion bajo.**
+  `GIANT_CAVE_SPIDER` se quedaba en «Giant cave spider» aunque el término
+  estuviera en la tabla. Afectaba a todas las tablas, no solo a las razas.
+- **En la fortaleza, el lugar salía dos veces**: «murió ahogándose en
+  elmuzkang. en elmuzkang». Y debajo, el volcado en bruto del suceso, que no
+  pintaba nada ahí.
+- **Frases mal montadas**: «Nokilonol☼: reclamó en elmuzkang» ahora dice «The
+  Elzon of Uthzon reclamó Nokilonol☼ en elmuzkang», y si no se sabe quién fue,
+  «Nokilonol☼ fue reclamado». Retocadas también las de construcciones y
+  cambios de mando.
+
+**Cambiado**
+
+- **Fuera las casillas de «ver también el dato en bruto».** No aportaban y
+  ensuciaban las fichas. El dato en bruto sigue disponible entero en el informe
+  de «¿Algo no cuadra?».
+- **El botón «¿El mapa no cuadra?» ahora es «¿Algo no cuadra?»** y enseña
+  bastante más: además de la geografía, cómo se llama cada suceso de tu mundo
+  con su recuento y si ProLegends sabe contarlo, los vínculos entre figuras,
+  con grupos y con sitios, y las razas con su traducción. Es el mismo método
+  que arregló los ríos: mirar el dato en vez de suponerlo. Lo mismo por consola
+  con `python -m app.cli geografia`.
+- **Fuera la explicación del grosor de los ríos** en el panel del mapa.
+- **«Avisos en 20 casillas a la redonda» ahora es «Qué tienes cerca»**, con una
+  línea debajo que dice qué se está mirando y hasta dónde.
+
+**Añadido**
+
+- **134 razas y las castas, en castellano.** «DWARF» se lee «enano» y «MALE»
+  se lee «varón» en las fichas, las listas y el filtro. El código interno se
+  queda donde estaba, porque es lo que usan los filtros y los colores, y una
+  criatura que no esté en el diccionario se sigue enseñando tal cual: no se
+  inventa un nombre. También se traducen los vínculos y los tipos de figura que
+  salían en inglés por las tablas.
+- Una comprobación nueva en la autocomprobación (sección 19) que vigila que las
+  tres formas de escribir un suceso lleven a la misma frase, que las razas se
+  lean bien y que las casillas de dato en bruto no vuelvan.
+
+**Sobre el selector de idioma castellano / inglés** que preguntabas: está
+apuntado en el ROADMAP, dentro de la v1.6.0 (interfaz), con un límite claro:
+los nombres propios que genera Dwarf Fortress no se traducen nunca.
+
+---
+
 ## v1.5.0 — Que se entienda
 
 *La versión que más cambia la sensación de usar el programa.*

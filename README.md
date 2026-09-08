@@ -239,12 +239,17 @@ Los sucesos no se enseñan como los escribe Dwarf Fortress, sino contados:
 > **159** — Iden Craftshailed murió por un golpe a manos de Uthhkos Lusbomith
 > en Kolluslan.
 
-Hay narración para 127 tipos de suceso y un diccionario de 418 términos (tipos
-de sitio, causas de muerte, cargos, vínculos, oficios, habilidades, esferas,
-biomas...). Con dos reglas: **no se inventa nada** —si el archivo no lo dice, la
-frase no lo dice— y **no se esconde nada** —lo que no tiene traducción se enseña
-tal cual, y el dato original está siempre a un clic con el interruptor *ver
-también el dato en bruto*—.
+Hay narración para 155 tipos de suceso y un diccionario de 552 términos (tipos
+de sitio, razas, castas, causas de muerte, cargos, vínculos, oficios,
+habilidades, esferas, biomas...). Cada mundo escribe el nombre de los sucesos a
+su manera —«hf died», «hist figure died», «change_hf_state»—, y las tres formas
+llevan a la misma frase.
+
+Con dos reglas: **no se inventa nada** —si el archivo no lo dice, la frase no lo
+dice, y una criatura que no esté en el diccionario se enseña con su nombre
+original— y **no se esconde nada** —el dato original completo está en el informe
+de *¿Algo no cuadra?*, que también dice qué sucesos de tu mundo se quedan sin
+frase propia—.
 
 ### Figuras históricas
 Buscador por nombre, con filtros de raza y de vivas/muertas. La ficha trae raza,
@@ -382,8 +387,9 @@ pero están. En Windows se ejecutan con `venv\Scripts\python` desde la carpeta
 del programa; en macOS y Linux, con `venv/bin/python`:
 
 ```
-python -m app.cli geografia       vuelca qué traen los XML sobre el mapa
-                                  (o el botón "¿El mapa no cuadra?" del mapa)
+python -m app.cli geografia       vuelca qué trae tu export de verdad: mapa,
+                                  sucesos, vínculos y razas
+                                  (o el botón "¿Algo no cuadra?" del mapa)
 python -m app.cli juego           busca Dwarf Fortress y enseña sus exports
 python -m app.cli juego --traer   copia a tu carpeta de exports los que falten
 python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero

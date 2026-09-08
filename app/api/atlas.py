@@ -85,7 +85,7 @@ def mapa(export_id: int, conn: sqlite3.Connection = Conn):
                 "nombre": ent["name"],
                 "tipo": ent["type"],
         "tipo_legible": D.entidad(ent["type"]),
-                "raza": ent["race"],
+                "raza": D.raza(ent["race"]),
                 "raiz": ent["root_id"],
                 "color": ent["color"],
             }
@@ -117,7 +117,7 @@ def _razas(conn: sqlite3.Connection, export_id: int) -> list[dict]:
             GROUP BY race ORDER BY n DESC""",
         (export_id,),
     )
-    return [{"raza": f["race"], "entidades": f["n"], "color": color_de(conn, export_id, f["race"])} for f in filas]
+    return [{"raza": D.raza(f["race"]), "codigo_raza": f["race"], "entidades": f["n"], "color": color_de(conn, export_id, f["race"])} for f in filas]
 
 
 def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
@@ -171,8 +171,8 @@ def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
             {
                 "hf_id": fig["hf_id"],
                 "nombre": fig["name"],
-                "raza": fig["race"],
-                "tipo": fig["associated_type"],
+                "raza": D.raza(fig["race"]),
+                "tipo": D.tipo_figura(fig["associated_type"]),
                 "nacimiento": fig["birth_year"],
                 "muerte": fig["death_year"],
                 "vive": bool(fig["alive"]),
@@ -209,7 +209,7 @@ def informe_geografia(export_id: int, conn: sqlite3.Connection = Conn):
 
     from .. import config
     from ..parser.discover import discover
-    from ..parser.inspeccion import informe, informe_bd
+    from ..parser.inspeccion import informe, informe_bd, informe_datos
 
     exp = get_export(conn, export_id)
 
@@ -230,10 +230,18 @@ def informe_geografia(export_id: int, conn: sqlite3.Connection = Conn):
         texto = informe_bd(conn, export_id)
         origen = "la base de datos (los XML ya no estaban en su carpeta)"
 
+    # Lo del mapa sale del XML si está; los sucesos, los vínculos y las razas
+    # salen siempre de la base de datos, que es donde se ve si ProLegends sabe
+    # contarlos o se le escapan.
+    try:
+        texto += "\n" + informe_datos(conn, export_id)
+    except Exception:  # pragma: no cover - el informe del mapa vale igual
+        pass
+
     fichero = ""
     try:
         config.ensure_dirs()
-        destino = config.DATA_DIR / f"geografia-{exp['prefix']}.txt"
+        destino = config.DATA_DIR / f"informe-{exp['prefix']}.txt"
         destino.write_text(texto, encoding="utf-8")
         fichero = str(destino)
     except OSError:
@@ -266,7 +274,7 @@ def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
                 "anyo": row["year"],
                 "entidad_id": row["owner_entity_id"],
                 "entidad": ent["name"] if ent else None,
-                "raza": ent["race"] if ent else None,
+                "raza": D.raza(ent["race"]) if ent else None,
                 "color": ent["color"] if ent else None,
                 "estado": row["state"],
                 "evento": row["event_type"],
@@ -311,6 +319,9 @@ def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
             ORDER BY h.alive DESC, h.name LIMIT 400""",
         (export_id, site_id),
     )
+    common.traducir_razas(habitantes)
+    for h in habitantes:
+        h["vinculo_legible"] = D.vinculo_sitio(h["link_type"])
 
     ent_actual = entidades.get(sitio["owner_id"])
     return {
@@ -326,14 +337,14 @@ def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
         "propietario": {
             "id": sitio["owner_id"],
             "nombre": ent_actual["name"] if ent_actual else None,
-            "raza": ent_actual["race"] if ent_actual else None,
+            "raza": D.raza(ent_actual["race"]) if ent_actual else None,
             "color": ent_actual["color"] if ent_actual else None,
         },
         "civilizacion": (
             {
                 "id": sitio["root_civ_id"],
                 "nombre": entidades[sitio["root_civ_id"]]["name"],
-                "raza": entidades[sitio["root_civ_id"]]["race"],
+                "raza": D.raza(entidades[sitio["root_civ_id"]]["race"]),
             }
             if sitio["root_civ_id"] in entidades
             else None
@@ -369,6 +380,7 @@ def listar_entidades(
     filas = dbmod.all_(conn, " ".join(sql), tuple(params))
     for fila in filas:
         fila["color"] = color_de(conn, export_id, fila["race"], fila["name"] or "")
+    common.traducir_razas(filas)
     return {"entidades": filas}
 
 
@@ -388,6 +400,7 @@ def ficha_entidad(export_id: int, entity_id: int, conn: sqlite3.Connection = Con
             WHERE c.export_id = ? AND c.parent_id = ? ORDER BY e.name""",
         (export_id, entity_id),
     )
+    common.traducir_razas(hijos)
     sitios = dbmod.all_(
         conn,
         """SELECT s.site_id, s.name, s.type, s.coord_x, s.coord_y, s.state
@@ -429,13 +442,16 @@ def ficha_entidad(export_id: int, entity_id: int, conn: sqlite3.Connection = Con
             ORDER BY h.alive DESC, h.name LIMIT 300""",
         (export_id, entity_id),
     )
+    common.traducir_razas(miembros)
+    for m in miembros:
+        m["vinculo_legible"] = D.vinculo_ent(m["link_type"])
     padre = entidades.get(ent["parent_id"]) if ent["parent_id"] is not None else None
     raiz = entidades.get(ent["root_id"]) if ent["root_id"] is not None else None
     return {
         "id": ent["entity_id"],
         "nombre": ent["name"],
         "tipo": ent["type"],
-        "raza": ent["race"],
+        "raza": D.raza(ent["race"]),
         "color": color_de(conn, export_id, ent["race"], ent["name"] or ""),
         "padre": {"id": padre["entity_id"], "nombre": padre["name"]} if padre else None,
         "raiz": {"id": raiz["entity_id"], "nombre": raiz["name"]} if raiz else None,

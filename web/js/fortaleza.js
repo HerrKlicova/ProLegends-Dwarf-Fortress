@@ -54,7 +54,7 @@ const Fortaleza = (() => {
         ['Civilización', r.civilizacion ? el('span', { class: 'enlace', text: r.civilizacion.name,
           onclick: () => Figuras.verEntidad(r.civilizacion.entity_id) }) : null],
         ['Censo de la civilización', (r.censo_civilizacion || []).length
-          ? r.censo_civilizacion.map((c) => `${c.race}: ${c.count}`).join(', ') : null],
+          ? r.censo_civilizacion.map((c) => `${c.raza || c.race}: ${c.count}`).join(', ') : null],
       ])),
 
       (r.artefactos && r.artefactos.creados_aqui.length) ? UI.bloque('Artefactos creados aquí',
@@ -77,14 +77,14 @@ const Fortaleza = (() => {
         `Habitantes vivos (${r.habitantes.vivos})`,
         UI.tabla(['Nombre', 'Raza', 'Vínculo'], r.habitantes.lista_vivos.map((h) => [
           el('span', { class: 'enlace', text: h.name || '?', onclick: () => App.irAFigura(h.hf_id) }),
-          h.race || '—', h.link_type || '—',
+          h.raza || h.race || '—', h.vinculo_legible || h.link_type || '—',
         ]))) : null,
 
       (r.habitantes && r.habitantes.lista_muertos.length) ? UI.bloque(
         `Fallecidos (${r.habitantes.muertos})`,
         UI.tabla(['Nombre', 'Raza', 'Año'], r.habitantes.lista_muertos.map((h) => [
           el('span', { class: 'enlace', text: h.name || '?', onclick: () => App.irAFigura(h.hf_id) }),
-          h.race || '—', String(UI.anyo(h.death_year)),
+          h.raza || h.race || '—', String(UI.anyo(h.death_year)),
         ]))) : null,
 
       el('div', { class: 'bloque' }, [
@@ -113,12 +113,13 @@ const Fortaleza = (() => {
     const bloques = secciones.filter(([, lista]) => lista && lista.length).map(([titulo, lista, clase]) =>
       UI.bloque(`${titulo} (${lista.length})`, ...lista.slice(0, 60).map((ev) =>
         el('div', { class: clase }, [
+          // La frase ya dice dónde pasó, así que el sitio solo se repite si la
+          // frase no lo nombra; y el dato en bruto ya no se enseña aquí.
           el('strong', { text: `Año ${UI.anyo(ev.anyo)} · ${UI.sucesoTexto(ev)}` }),
-          ev.sitio ? el('span', { text: ` en ${ev.sitio}` }) : null,
+          ev.sitio && !UI.sucesoTexto(ev).includes(ev.sitio)
+            ? el('span', { text: ` en ${ev.sitio}` }) : null,
           ev.distancia !== null && ev.distancia !== undefined && ev.distancia > 0
             ? el('span', { class: 'nota', text: ` (a ${ev.distancia} casillas)` }) : null,
-          Object.keys(ev.detalles || {}).length
-            ? el('div', { class: 'nota', text: UI.detallesTexto(ev.detalles) }) : null,
         ]))));
 
     if (n.artefactos_nuevos.length) {
@@ -132,7 +133,7 @@ const Fortaleza = (() => {
       bloques.push(UI.bloque(`Han muerto desde el export anterior (${n.muertes_nuevas.length})`,
         UI.tabla(['Nombre', 'Raza', 'Año'], n.muertes_nuevas.slice(0, 100).map((m) => [
           el('span', { class: 'enlace', text: m.name || '?', onclick: () => App.irAFigura(m.hf_id) }),
-          [m.race, m.associated_type !== 'standard' ? m.associated_type : null].filter(Boolean).join(' · ') || '—',
+          [m.raza || m.race, m.associated_type !== 'standard' ? (m.tipo_legible || m.associated_type) : null].filter(Boolean).join(' · ') || '—',
           String(UI.anyo(m.death_year)),
         ]))));
     }
@@ -173,9 +174,13 @@ const Fortaleza = (() => {
         document.createTextNode(` — ${b.tipo || 'bestia'} viva${b.raza ? ' (' + b.raza + ')' : ''}, a ${b.distancia} casillas, en ${b.sitio}.`),
       ]));
     }
-    return UI.bloque(`Avisos en ${a.radio} casillas a la redonda`,
+    return UI.bloque('Qué tienes cerca', el('div', {}, [
+      el('p', { class: 'nota', text:
+        `Sitios hostiles, bestias vivas y guerras a menos de ${a.radio} casillas `
+        + 'de tu fortaleza en el mapa del mundo.' }),
       filas.length ? el('div', {}, filas)
-        : el('div', { class: 'alerta buena', text: 'Ni sitios hostiles, ni bestias vivas cerca, ni guerras activas.' }));
+        : el('div', { class: 'alerta buena', text: 'Ni sitios hostiles, ni bestias vivas cerca, ni guerras activas.' }),
+    ]));
   }
 
   function sinFortaleza(d) {

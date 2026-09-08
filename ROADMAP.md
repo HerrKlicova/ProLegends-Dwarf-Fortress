@@ -206,6 +206,8 @@ está escrito para una persona.
 - **Plantillas de narración por tipo de evento**, que convierten los
   identificadores en nombres y los ordenan en una frase.
 - Un interruptor para ver el dato en bruto, para cuando quieras comprobar algo.
+  *(Se quitó en la v1.5.1: no lo usaba nadie y ensuciaba las fichas. El dato en
+  bruto sigue estando, pero en el informe de «¿Algo no cuadra?».)*
 
 **Por qué va aquí y no antes.** Porque el mismo diccionario es la mitad del
 arreglo de las crónicas (v1.8), y hacerlo una vez es mejor que hacerlo dos.
@@ -215,9 +217,15 @@ golpe: se empieza por los cincuenta más frecuentes, que cubrirán la inmensa
 mayoría de lo que ves, y el resto sigue mostrándose como ahora.
 
 **Cómo quedó.** 127 plantillas de narración y 418 términos de diccionario, con
-el interruptor de «ver el dato en bruto» y las dos reglas intactas: no inventar
-y no esconder. El diccionario se puede seguir ampliando sin tocar nada más: es
-añadir entradas a una tabla.
+las dos reglas intactas: no inventar y no esconder. El diccionario se puede
+seguir ampliando sin tocar nada más: es añadir entradas a una tabla.
+
+**Lo que faltaba (v1.5.1).** Cada mundo escribe el nombre de los sucesos a su
+manera («hf died», «hist figure died», «change_hf_state»), así que muchos se
+quedaban sin frase propia sin que nadie se enterara. Ahora el nombre se
+reconoce en cualquiera de sus formas, hay 155 plantillas —todos los tipos que
+maneja LegendsViewer— y el informe de «¿Algo no cuadra?» dice, con recuentos,
+cuáles de tu mundo se quedan fuera.
 
 **Tamaño.** Medio-grande, pero muy troceable. Se puede ir ampliando el
 diccionario poco a poco.
@@ -240,6 +248,13 @@ diccionario poco a poco.
   tarjetas consistentes; ahora mismo cada vista va un poco a su aire.
 - **Tablas ordenables** y con filtro.
 - **Estados vacíos y de carga decentes**, en lugar de un «Cargando...» pelado.
+- **Selector de idioma castellano / inglés.** Hoy la aplicación está en
+  castellano y va traduciendo el vocabulario de DF a medida que se amplía el
+  diccionario. Un selector permitiría ver los términos originales cuando hagan
+  falta —para buscar en la wiki, para comparar con LegendsViewer— sin perder la
+  lectura en castellano. Con un límite que no se va a cruzar: **los nombres
+  propios que genera Dwarf Fortress no se traducen nunca**. «Kolluslan» es
+  «Kolluslan»; traducirlo sería inventarse un mundo que no existe.
 
 **Qué hay que decidir contigo.** Esto es lo más subjetivo de todo el plan. Lo
 sensato es que te prepare dos o tres propuestas visuales y elijas, en vez de que

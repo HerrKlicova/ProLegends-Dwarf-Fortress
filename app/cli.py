@@ -1,7 +1,7 @@
 """Linea de comandos de ProLegends.
 
     python -m app.cli juego           busca Dwarf Fortress y trae sus exports
-    python -m app.cli geografia       vuelca que traen los XML sobre el mapa
+    python -m app.cli geografia       vuelca que trae el export: mapa, sucesos y vinculos
     python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero
     python -m app.cli ordenar         renombra y ordena los XML de data/imports/
     python -m app.cli importar        procesa data/imports/ y vuelca a SQLite
@@ -186,9 +186,28 @@ def cmd_geografia(args: argparse.Namespace) -> int:
         pares = pares[-1:]   # el más reciente basta
 
     rutas = [r for par in pares for r in (par.main, par.plus) if r]
-    salida = Path(args.salida) if args.salida else (config.DATA_DIR / "geografia.txt")
+    salida = Path(args.salida) if args.salida else (config.DATA_DIR / "informe.txt")
     print(f"Mirando {len(rutas)} fichero(s)...")
-    texto = informe(rutas, salida=salida)
+    texto = informe(rutas)
+
+    # Si ese export ya está importado, se añade lo que se sabe de sus sucesos,
+    # sus vínculos y sus razas: eso solo está en la base de datos.
+    try:
+        from . import db as dbmod
+        from .parser.inspeccion import informe_datos
+
+        with dbmod.session() as conn:
+            fila = conn.execute(
+                "SELECT id FROM exports WHERE prefix = ? ORDER BY id DESC LIMIT 1",
+                (pares[0].prefix,),
+            ).fetchone()
+            if fila is not None:
+                texto += "\n" + informe_datos(conn, fila[0])
+    except Exception as e:  # pragma: no cover - sin base de datos vale el mapa
+        print(f"  [aviso] no se pudo mirar la base de datos: {e}")
+
+    salida.parent.mkdir(parents=True, exist_ok=True)
+    salida.write_text(texto, encoding="utf-8")
     print()
     print(texto)
     print("=" * 70)
@@ -387,7 +406,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_geo = sub.add_parser(
         "geografia",
-        help="vuelca qué traen los XML sobre el mapa (ríos, regiones, calzadas)",
+        help="vuelca qué trae el export: mapa, sucesos, vínculos y razas",
     )
     p_geo.add_argument("--prefijo", help="mirar este export en vez del más reciente")
     p_geo.add_argument("--salida", help="dónde escribir el informe")

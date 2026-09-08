@@ -19,7 +19,7 @@ const Figuras = (() => {
     const datos = await API.figuras(App.exportId(), 'limite=1');
     const sel = document.getElementById('filtro-raza');
     UI.poner(sel, el('option', { value: '', text: `todas (${datos.total} figuras)` }),
-      ...datos.razas.map((r) => el('option', { value: r.race, text: `${r.race} (${r.n})` })));
+      ...datos.razas.map((r) => el('option', { value: r.race, text: `${r.raza || r.race} (${r.n})` })));
     UI.poner(document.getElementById('panel-figura'),
       el('p', { class: 'vacio', text: 'Busca una figura histórica y pincha en ella.' }));
     await listar();
@@ -93,8 +93,6 @@ const Figuras = (() => {
               class: 'enlace', text: f.ficha_muerte.asesino,
               onclick: () => abrir(f.ficha_muerte.slayer_hfid) })])
           : null,
-        UI.enBruto()
-          ? el('div', { class: 'crudo', text: UI.detallesTexto(f.ficha_muerte.detalles) }) : null,
       ])) : null,
 
       f.pertenencias.length ? UI.bloque('Entidades a las que pertenece o perteneció',
@@ -142,7 +140,8 @@ const Figuras = (() => {
 
       f.tramas.length ? UI.bloque('Tramas de intriga',
         UI.tabla(['Tipo', 'Detalles'], f.tramas.map((t) => [
-          t.type || '—', el('span', { class: 'nota', text: UI.detallesTexto(t.detalles) }),
+          t.type ? UI.tipoLegible(t.type) : '—',
+          el('span', { class: 'nota', text: UI.detallesTexto(t.detalles) }),
         ]))) : null,
 
       f.relaciones.length ? UI.bloque('Relaciones',
@@ -157,11 +156,10 @@ const Figuras = (() => {
         UI.tabla(['Año', 'Víctima', 'Raza'], f.victimas.map((v) => [
           String(UI.anyo(v.year)),
           v.name ? el('span', { class: 'enlace', text: v.name, onclick: () => abrir(v.hfid) }) : `figura ${v.hfid}`,
-          v.race || '—',
+          v.raza || v.race || '—',
         ]))) : null,
 
       f.eventos.length ? UI.bloque(`Sucesos de su vida (${f.eventos.length}${f.eventos_truncados ? '+' : ''})`,
-        UI.interruptorBruto(() => abrir(f.id)),
         UI.tabla(['Año', 'Qué pasó', 'Lugar'], f.eventos.map((ev) => [
           String(UI.anyo(ev.anyo)), UI.suceso(ev),
           ev.sitio ? el('span', { class: 'enlace', text: ev.sitio, onclick: () => App.verSitio(ev.site_id) }) : '—',
@@ -221,7 +219,7 @@ const Figuras = (() => {
       e.miembros.length ? UI.bloque(`Miembros registrados (${e.miembros.length})`,
         UI.tabla(['Nombre', 'Raza', 'Vínculo'], e.miembros.slice(0, 150).map((m) => [
           el('span', { class: 'enlace', text: m.name || '?', onclick: () => abrir(m.hf_id) }),
-          m.race || '—', (m.link_type || '') + (m.alive ? '' : ' (fallecido)'),
+          m.raza || m.race || '—', (m.vinculo_legible || m.link_type || '') + (m.alive ? '' : ' (fallecido)'),
         ]))) : null,
     ]);
   }
@@ -245,7 +243,7 @@ const Figuras = (() => {
           datos.matadores.map((m, i) => [
             String(i + 1),
             el('span', { class: 'enlace', text: m.name || `figura ${m.hf_id}`, onclick: () => abrir(m.hf_id) }),
-            [m.race, m.associated_type !== 'standard' ? m.associated_type : null].filter(Boolean).join(' · ') || '—',
+            [m.raza || m.race, m.associated_type !== 'standard' ? (m.tipo_legible || m.associated_type) : null].filter(Boolean).join(' · ') || '—',
             String(m.kills),
             el('span', { class: 'nota', text: m.victimas.map((v) => `${v.name || '?'} (${v.year})`).join(', ') }),
           ])),

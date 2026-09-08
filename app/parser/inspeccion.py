@@ -196,3 +196,84 @@ def informe_bd(conn, export_id: int, muestras: int = MUESTRAS) -> str:
         lineas.append("")
 
     return "\n".join(lineas)
+
+
+# ------------------------------------------------- sucesos, vínculos y razas
+def informe_datos(conn, export_id: int, tope: int = 200) -> str:
+    """Qué nombres usa de verdad este export para los sucesos y los vínculos.
+
+    El mapa se arregló mirando el XML en vez de suponiendo; con las frases y las
+    relaciones toca lo mismo. Aquí se ve, con recuentos, cómo se llama cada cosa
+    en este mundo concreto y si ProLegends sabe contarla o se le escapa.
+    """
+    from ..model import diccionario as D
+    from ..model.narrador import plantilla_de
+
+    lineas: list[str] = []
+    lineas.append("")
+    lineas.append("=" * 70)
+    lineas.append("SUCESOS, VÍNCULOS Y RAZAS DE ESTE EXPORT")
+    lineas.append("Los nombres tal y como vienen, con cuántas veces sale cada uno.")
+    lineas.append("=" * 70)
+    lineas.append("")
+
+    def recuento(sql: str) -> list[tuple[str, int]]:
+        try:
+            return [(str(r[0]) if r[0] is not None else "(sin dato)", r[1])
+                    for r in conn.execute(sql, (export_id,))]
+        except Exception:  # pragma: no cover - una tabla que no exista no rompe el informe
+            return []
+
+    tipos = recuento(
+        """SELECT type, COUNT(*) n FROM events WHERE export_id = ?
+            GROUP BY type ORDER BY n DESC""")
+    sin_plantilla = [(t, n) for t, n in tipos if plantilla_de(t) is None]
+    total = sum(n for _, n in tipos)
+    contados = sum(n for t, n in tipos if plantilla_de(t) is not None)
+    lineas.append(f"  --- tipos de suceso: {len(tipos)} distintos, {total} sucesos ---")
+    if total:
+        lineas.append(f"      con frase propia: {contados} de {total} "
+                      f"({contados * 100 // total}%)")
+    for t, n in tipos[:tope]:
+        marca = "ok " if plantilla_de(t) is not None else "SIN FRASE"
+        lineas.append(f"      {marca:10} {n:8}  {t}")
+    if sin_plantilla:
+        lineas.append("")
+        lineas.append("      Estos caen en la fórmula genérica y habría que darles frase:")
+        for t, n in sin_plantilla[:tope]:
+            lineas.append(f"        {n:8}  {t}")
+    lineas.append("")
+
+    for titulo, sql in (
+        ("tipos de capítulo (colecciones de sucesos)",
+         """SELECT type, COUNT(*) n FROM event_collections WHERE export_id = ?
+             GROUP BY type ORDER BY n DESC"""),
+        ("vínculos entre figuras (pestaña Relaciones)",
+         """SELECT link_type, COUNT(*) n FROM hf_links WHERE export_id = ?
+             GROUP BY link_type ORDER BY n DESC"""),
+        ("vínculos de figura con grupo",
+         """SELECT link_type, COUNT(*) n FROM hf_entity_links WHERE export_id = ?
+             GROUP BY link_type ORDER BY n DESC"""),
+        ("vínculos de figura con sitio",
+         """SELECT link_type, COUNT(*) n FROM hf_site_links WHERE export_id = ?
+             GROUP BY link_type ORDER BY n DESC"""),
+    ):
+        filas = recuento(sql)
+        lineas.append(f"  --- {titulo}: {len(filas)} distintos ---")
+        for valor, n in filas[:tope]:
+            lineas.append(f"      {n:8}  {valor}")
+        lineas.append("")
+
+    razas = recuento(
+        """SELECT race, COUNT(*) n FROM historical_figures WHERE export_id = ?
+            GROUP BY race ORDER BY n DESC""")
+    lineas.append(f"  --- razas de las figuras: {len(razas)} distintas ---")
+    for valor, n in razas[:tope]:
+        traducida = D.raza(valor)
+        plano = " ".join(str(valor).replace("_", " ").lower().split())
+        conocida = plano in D.RAZAS or str(valor) in D.RAZAS
+        lineas.append(f"      {n:8}  {valor}  ->  {traducida}"
+                      + ("" if conocida else "   (sin traducir)"))
+    lineas.append("")
+
+    return "\n".join(lineas)

@@ -195,6 +195,9 @@ def summary(conn: sqlite3.Connection, export_id: int, site_id: int) -> dict:
             WHERE l.export_id = ? AND l.site_id = ?""",
         (export_id, site_id),
     )
+    for h in habitantes:
+        h["raza"] = diccionario.raza(h["race"])
+        h["vinculo_legible"] = diccionario.vinculo_sitio(h["link_type"])
     vivos = [h for h in habitantes if h["alive"]]
     muertos = [h for h in habitantes if not h["alive"]]
 
@@ -205,6 +208,8 @@ def summary(conn: sqlite3.Connection, export_id: int, site_id: int) -> dict:
             "SELECT race, count FROM entity_populations WHERE export_id = ? AND civ_id = ?",
             (export_id, civilizacion["entity_id"]),
         )
+        for c in censo:
+            c["raza"] = diccionario.raza(c["race"])
 
     artefactos = dbmod.all_(
         conn,
@@ -408,6 +413,9 @@ def diff(
         (export_hasta,),
     )
     nuevas_muertes = [m for m in nuevas_muertes if m["hf_id"] in vivos_antes]
+    for m in nuevas_muertes:
+        m["raza"] = diccionario.raza(m["race"])
+        m["tipo_legible"] = diccionario.tipo_figura(m["associated_type"])
     nuevas_muertes.sort(key=lambda m: m["death_year"] or 0, reverse=True)
 
     # Artefactos de mi fortaleza sobre los que alguien ha formado una reclamacion.
@@ -501,7 +509,7 @@ def alerts(
             {
                 "site_id": row["site_id"],
                 "nombre": row["name"],
-                "tipo": row["type"],
+                "tipo": diccionario.sitio(row["type"]),
                 "capa": L.site_layer(row["type"]),
                 "distancia": dist,
                 "civ_id": civ,
@@ -533,8 +541,8 @@ def alerts(
                 {
                     "hf_id": row["hf_id"],
                     "nombre": row["name"],
-                    "raza": row["race"],
-                    "tipo": row["associated_type"],
+                    "raza": diccionario.raza(row["race"]),
+                    "tipo": diccionario.tipo_figura(row["associated_type"]),
                     "sitio": row["sitio"],
                     "site_id": row["site_id"],
                     "distancia": dist,

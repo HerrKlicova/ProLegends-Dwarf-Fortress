@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query
 from .. import db as dbmod
 from ..errors import NotFoundError
 from ..model import diccionario as D
+from ..model.narrador import variantes
 from . import common
 from .common import (
     Conn,
@@ -85,6 +86,8 @@ def buscar(
     )
     for fila in filas:
         fila["color"] = color_de(conn, export_id, fila["race"])
+    common.traducir_razas(filas)
+    common.traducir_razas(razas)
     return {"figuras": filas, "total": total, "razas": razas}
 
 
@@ -119,7 +122,8 @@ def matadores(export_id: int, limite: int = Query(50, le=500), conn: sqlite3.Con
     for fila in filas:
         fila["color"] = color_de(conn, export_id, fila["race"])
         lista = sorted(victimas.get(fila["hf_id"], []), key=lambda v: v["year"] or 0)
-        fila["victimas"] = lista[:12]
+        fila["victimas"] = common.traducir_razas(lista[:12])
+    common.traducir_razas(filas)
     return {"matadores": filas}
 
 
@@ -148,7 +152,7 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
                 "entidad_id": row["entity_id"],
                 "entidad": ent["name"] if ent else None,
                 "tipo_entidad": ent["type"] if ent else None,
-                "raza": ent["race"] if ent else None,
+                "raza": D.raza(ent["race"]) if ent else None,
                 "vinculo": row["link_type"],
                 "vinculo_legible": D.vinculo_ent(row["link_type"]),
                 "tipo_entidad_legible": D.entidad(ent["type"]) if ent else None,
@@ -263,11 +267,16 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
         (export_id, hf_id),
     )
     victimas.sort(key=lambda v: v["year"] if v["year"] is not None else 0)
+    common.traducir_razas(victimas)
+    # El nombre del suceso cambia de un export a otro ("hf died", "hist figure
+    # died"...), asi que se pregunta por todas sus formas y no por una sola.
+    formas_muerte = variantes("hf died")
     muerte = dbmod.one(
         conn,
-        """SELECT event_id, year, slayer_hfid, data_json FROM events
-            WHERE export_id = ? AND hfid = ? AND type = 'hf died' LIMIT 1""",
-        (export_id, hf_id),
+        f"""SELECT event_id, year, slayer_hfid, data_json FROM events
+             WHERE export_id = ? AND hfid = ?
+               AND type IN ({",".join("?" * len(formas_muerte))}) LIMIT 1""",
+        (export_id, hf_id, *formas_muerte),
     )
     if muerte:
         detalles = load_json(muerte.pop("data_json"))
@@ -292,8 +301,8 @@ def ficha(export_id: int, hf_id: int, limite_eventos: int = 300, conn: sqlite3.C
     return {
         "id": fig["hf_id"],
         "nombre": fig["name"],
-        "raza": fig["race"],
-        "casta": fig["caste"],
+        "raza": D.raza(fig["race"]),
+        "casta": D.casta(fig["caste"]),
         "color": color_de(conn, export_id, fig["race"]),
         "nacimiento": fig["birth_year"],
         "muerte": fig["death_year"],

@@ -296,21 +296,25 @@ def _estructura_creada(c: Contexto) -> str:
     estructura = c.estructura()
     entidad = c.entidad()
     quien = c.hf_por("builder_hf", "builder_hfid")
-    base = f"Se construyó {estructura}" if estructura else "Se levantó una construcción"
-    if quien:
-        base += f", obra de {quien}"
-    elif entidad:
-        base += f", obra de {entidad}"
-    return base + c.en_lugar() + "."
+    obra = estructura or "una construcción"
+    autor = quien or entidad
+    if autor:
+        return f"{autor} levantó {obra}{c.en_lugar()}."
+    return f"Se levantó {obra}{c.en_lugar()}."
 
 
-def _artefacto(verbo: str) -> Callable[[Contexto], str]:
+def _artefacto(verbo: str, pasiva: str = "") -> Callable[[Contexto], str]:
+    """Lo que le pasa a una pieza de leyenda.
+
+    Si se sabe quién lo hizo (una figura o un grupo) se cuenta en activa; si no
+    se sabe, en pasiva. Lo que no se hace es dejar la frase coja.
+    """
     def plantilla(c: Contexto) -> str:
         arte = c.artefacto() or "un artefacto"
-        quien = c.quien() or c.hf_por("hist_figure_id", "unit_id")
+        quien = c.quien() or c.hf_por("hist_figure_id", "unit_id") or c.entidad()
         if quien:
             return f"{quien} {verbo} {arte}{c.en_lugar()}."
-        return f"{arte}: {verbo}{c.en_lugar()}."
+        return f"{arte} {pasiva or 'cambió de manos'}{c.en_lugar()}."
     return plantilla
 
 
@@ -442,11 +446,13 @@ def _nuevo_lider(c: Contexto) -> str:
     lider = c.hf_por("new_leader_hfid")
     sitio = c.sitio()
     atacante = c.atacante()
-    frase = f"{lider} tomó el mando" if lider else "Hubo un cambio de mando"
-    if sitio:
-        frase += f" de {sitio}"
+    donde = f" de {sitio}" if sitio else ""
+    if lider:
+        frase = f"{lider} pasó a mandar{donde}"
+    else:
+        frase = f"Cambió el mando{donde}"
     if atacante:
-        frase += f", en nombre de {atacante}"
+        frase += f", ahora en manos de {atacante}"
     return frase + "."
 
 
@@ -714,6 +720,115 @@ def _reencuentro(c: Contexto) -> str:
     return f"{uno} y {dos or 'un viejo conocido'} se reencontraron{c.en_lugar()}."
 
 
+
+# --------------------------------------------------- sucesos que faltaban
+def _refriega(nombre: str):
+    """Choques entre grupos: batallas, duelos, escaramuzas."""
+    def plantilla(c: Contexto) -> str:
+        uno = c.atacante() or c.entidad()
+        otro = c.defensor()
+        if uno and otro:
+            return f"{uno} y {otro} se enfrentaron en {nombre}{c.en_lugar()}."
+        quien = c.alguien(c.quien(), "")
+        if quien:
+            return f"{quien} tomó parte en {nombre}{c.en_lugar()}."
+        return f"Hubo {nombre}{c.en_lugar()}."
+    return plantilla
+
+
+def _episodio(nombre: str):
+    """Capítulos de la historia que agrupan otros sucesos."""
+    def plantilla(c: Contexto) -> str:
+        quien = c.atacante() or c.entidad()
+        contra = c.defensor()
+        if quien and contra:
+            return f"{quien} llevó {nombre} contra {contra}{c.en_lugar()}."
+        if quien:
+            return f"{quien} llevó {nombre}{c.en_lugar()}."
+        return f"Hubo {nombre}{c.en_lugar()}."
+    return plantilla
+
+
+def _compra(c: Contexto) -> str:
+    quien = c.alguien(c.quien(), "") or c.entidad() or "Alguien"
+    return f"{quien} se hizo con equipo nuevo{c.en_lugar()}."
+
+
+def _mira_artefacto(verbo: str):
+    def plantilla(c: Contexto) -> str:
+        quien = c.alguien(c.quien())
+        pieza = c.artefacto()
+        return f"{quien} {verbo} {pieza or 'una pieza de leyenda'}{c.en_lugar()}."
+    return plantilla
+
+
+def _cuerpo(c: Contexto) -> str:
+    quien = c.alguien(c.quien())
+    estado = c.campo("body_state", "state")
+    traducido = D.traducir(estado, D.ESTADOS_HF) if estado else ""
+    if traducido and estado in D.ESTADOS_HF:
+        return f"{quien} {traducido}{c.en_lugar()}."
+    if estado:
+        return f"{quien} cambió de estado ({D.limpiar(estado).lower()}){c.en_lugar()}."
+    return f"{quien} cambió de estado{c.en_lugar()}."
+
+
+def _tributo(c: Contexto) -> str:
+    quien = c.atacante() or c.entidad() or "Un poder"
+    sitio = c.sitio()
+    return f"{quien} impuso un tributo{(' a ' + sitio) if sitio else ''}."
+
+
+def _amor_rechazado(c: Contexto) -> str:
+    uno = c.alguien(c.quien())
+    dos = c.otro()
+    return f"{uno} fue rechazado por {dos or 'la persona a la que pretendía'}{c.en_lugar()}."
+
+
+def _experimentos(c: Contexto) -> str:
+    quien = c.alguien(c.quien())
+    return f"{quien} llevó a cabo experimentos atroces{c.en_lugar()}."
+
+
+def _intento_fallido(nombre: str):
+    return lambda c: (
+        f"{c.alguien(c.quien(), '') or c.entidad() or 'Alguien'} fracasó al {nombre}"
+        f"{c.en_lugar()}.")
+
+
+def _obra_edificio(verbo: str):
+    def plantilla(c: Contexto) -> str:
+        quien = c.alguien(c.quien(), "") or c.entidad() or "Alguien"
+        obra = c.estructura()
+        return f"{quien} {verbo} {obra or 'un edificio'}{c.en_lugar()}."
+    return plantilla
+
+
+def _situacion(c: Contexto) -> str:
+    uno = c.atacante() or c.entidad()
+    otro = c.defensor()
+    if uno and otro:
+        return f"{uno} y {otro} midieron fuerzas antes del choque{c.en_lugar()}."
+    return f"Los ejércitos se midieron antes del choque{c.en_lugar()}."
+
+
+def _escuadras(c: Contexto) -> str:
+    uno = c.atacante() or c.entidad()
+    otro = c.defensor()
+    if uno and otro:
+        return f"Chocaron las tropas de {uno} y las de {otro}{c.en_lugar()}."
+    return f"Dos escuadras chocaron{c.en_lugar()}."
+
+
+def _persecucion(c: Contexto) -> str:
+    quien = c.entidad() or c.atacante() or "Un poder"
+    victima = c.alguien(c.quien(), "") or c.defensor()
+    if victima:
+        return f"{quien} persiguió a {victima}{c.en_lugar()}."
+    return f"{quien} desató una persecución{c.en_lugar()}."
+
+
+
 PLANTILLAS: dict[str, Callable[[Contexto], str]] = {
     "hf died": _muerte,
     "add hf entity link": lambda c: _vinculo_entidad(c, True),
@@ -739,17 +854,17 @@ PLANTILLAS: dict[str, Callable[[Contexto], str]] = {
         f"{c.en_lugar()}."),
     "artifact created": _artefacto_creado,
     "created artifact": _artefacto_creado,
-    "artifact stored": _artefacto("guardó"),
-    "artifact possessed": _artefacto("se apoderó de"),
-    "artifact claim formed": _artefacto("reclamó"),
-    "artifact lost": _artefacto("perdió"),
-    "artifact found": _artefacto("encontró"),
-    "artifact recovered": _artefacto("recuperó"),
-    "artifact given": _artefacto("entregó"),
-    "artifact destroyed": _artefacto("destruyó"),
-    "artifact copied": _artefacto("copió"),
-    "artifact transformed": _artefacto("transformó"),
-    "artifact stored in structure": _artefacto("depositó"),
+    "artifact stored": _artefacto("guardó", "fue guardado"),
+    "artifact possessed": _artefacto("se apoderó de", "encontró nuevo dueño"),
+    "artifact claim formed": _artefacto("reclamó", "fue reclamado"),
+    "artifact lost": _artefacto("perdió", "se perdió"),
+    "artifact found": _artefacto("encontró", "fue encontrado"),
+    "artifact recovered": _artefacto("recuperó", "fue recuperado"),
+    "artifact given": _artefacto("entregó", "fue entregado"),
+    "artifact destroyed": _artefacto("destruyó", "fue destruido"),
+    "artifact copied": _artefacto("copió", "fue copiado"),
+    "artifact transformed": _artefacto("transformó", "fue transformado"),
+    "artifact stored in structure": _artefacto("depositó", "fue depositado"),
     "written content composed": _obra_escrita,
     "poetic form created": _forma_creada("poesía"),
     "musical form created": _forma_creada("música"),
@@ -849,7 +964,103 @@ PLANTILLAS: dict[str, Callable[[Contexto], str]] = {
     "hf recruited unit type for entity": lambda c: (
         f"{c.alguien(c.quien())} reclutó tropas"
         f"{(' para ' + c.entidad()) if c.entidad() else ''}{c.en_lugar()}."),
+    # --- sucesos y capítulos que antes caían en la fórmula genérica
+    "war": _episodio("una guerra"),
+    "battle": _refriega("una batalla"),
+    "duel": _refriega("un duelo"),
+    "squad vs squad": _escuadras,
+    "tactical situation": _situacion,
+    "beast attack": lambda c: (
+        f"Una bestia atacó{c.en_lugar()}."),
+    "raid": _episodio("una razia"),
+    "theft": _episodio("un robo"),
+    "abduction": _episodio("un secuestro"),
+    "journey": _episodio("una expedición"),
+    "insurrection": _episodio("una revuelta"),
+    "purge": _episodio("una purga"),
+    "persecution": _persecucion,
+    "entity persecuted": _persecucion,
+    "occasion": _celebracion("una fiesta"),
+    "site conquered": _conquista,
+    "site tribute forced": _tributo,
+    "change hf body state": _cuerpo,
+    "hf equipment purchase": _compra,
+    "entity equipment purchase": _compra,
+    "hf viewed artifact": _mira_artefacto("contempló"),
+    "hf asked about artifact": _mira_artefacto("preguntó por"),
+    "hf relationship denied": _amor_rechazado,
+    "hf performed horrible experiments": _experimentos,
+    "failed frame attempt": _intento_fallido("intentar inculpar a otro"),
+    "failed intrigue corruption": _intento_fallido("intentar corromper a alguien"),
+    "building profile acquired": _obra_edificio("se quedó con"),
+    "modified building": _obra_edificio("reformó"),
 }
+
+
+# ------------------------------------------ cómo se llama cada suceso de verdad
+# Los exports no siempre escriben el tipo igual: unos usan guiones bajos, otros
+# dicen "hist figure" donde el resto dice "hf". Antes de buscar la plantilla se
+# deja el nombre en su forma canónica; así una misma frase vale para todos.
+ALIAS_TIPOS: dict[str, str] = {
+    "hist figure died": "hf died",
+    "historical figure died": "hf died",
+    "hf death": "hf died",
+    "site created": "created site",
+    "structure created": "created structure",
+    "created artifact": "artifact created",
+    "change creature type": "changed creature type",
+    "artifact stored in structure": "artifact stored",
+    "insurrection": "insurrection started",
+    "site conquered": "site taken over",
+    "entity persecuted": "persecution",
+    "masterpiece arch": "masterpiece arch design",
+}
+
+_PREFIJOS = (
+    ("historical figure ", "hf "),
+    ("hist figure ", "hf "),
+    ("hist fig ", "hf "),
+    ("histfig ", "hf "),
+)
+
+
+def normalizar_tipo(tipo) -> str:
+    """El nombre del suceso tal y como lo tiene la tabla de plantillas."""
+    texto = " ".join(str(tipo or "").replace("_", " ").replace("-", " ").lower().split())
+    for viejo, nuevo in _PREFIJOS:
+        if texto.startswith(viejo):
+            texto = nuevo + texto[len(viejo):]
+            break
+    return ALIAS_TIPOS.get(texto, texto)
+
+
+def plantilla_de(tipo) -> Optional[Callable[[Contexto], str]]:
+    """La plantilla de un tipo, o None si todavía no tiene una propia."""
+    return PLANTILLAS.get(normalizar_tipo(tipo))
+
+
+
+def variantes(tipo: str) -> list[str]:
+    """Todas las formas en que un export puede escribir ese tipo de suceso.
+
+    Sirve para las consultas SQL: en la base de datos el tipo está tal cual
+    venía en el XML, así que hay que preguntar por todas sus formas.
+    """
+    canonico = normalizar_tipo(tipo)
+    formas = {canonico}
+    for viejo, nuevo in ALIAS_TIPOS.items():
+        if nuevo == canonico:
+            formas.add(viejo)
+    if canonico.startswith("hf "):
+        resto = canonico[3:]
+        formas.update({"hist figure " + resto, "historical figure " + resto,
+                       "hist fig " + resto, "histfig " + resto})
+    return sorted(formas | {f.replace(" ", "_") for f in formas})
+
+
+def tipos_sin_plantilla(tipos: Iterable[str]) -> list[str]:
+    """De una lista de tipos, los que acabarían en la fórmula genérica."""
+    return sorted({str(t) for t in tipos if t and plantilla_de(t) is None})
 
 
 # ------------------------------------------------------------- fórmula genérica
@@ -933,7 +1144,7 @@ class Narrador:
     def frase(self, fila: dict) -> str:
         datos = _cargar(fila)
         c = Contexto(fila, datos, self.nombres)
-        plantilla = PLANTILLAS.get(c.tipo)
+        plantilla = plantilla_de(c.tipo)
         try:
             texto = plantilla(c) if plantilla else generica(c)
         except Exception:  # pragma: no cover - una frase nunca tumba una ficha

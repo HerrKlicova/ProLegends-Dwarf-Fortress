@@ -12,6 +12,7 @@ from fastapi import Depends
 
 from .. import db as dbmod
 from ..errors import NotFoundError
+from ..model import diccionario as D
 
 
 def get_conn():
@@ -274,3 +275,15 @@ def narrar(conn: sqlite3.Connection, export_id: int,
     for fila, evento in zip(filas, eventos):
         evento["frase"] = narrador.frase(fila)
     return eventos
+
+
+def traducir_razas(filas, clave: str = "race", destino: str = "raza"):
+    """Añade a cada fila el nombre de la raza en castellano.
+
+    El código interno ("DWARF") se queda donde estaba porque es lo que usan los
+    filtros y los colores; al lado va la versión legible, que es la que se lee.
+    """
+    for fila in filas or []:
+        if isinstance(fila, dict) and fila.get(clave) is not None:
+            fila[destino] = D.raza(fila[clave])
+    return filas

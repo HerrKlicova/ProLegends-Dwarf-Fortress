@@ -867,6 +867,42 @@ console.log(salida.join('\\n'));
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
+    # ------------------------------------------------------------------ 19
+    print()
+    print("19. Cada mundo llama a las cosas a su manera")
+    from app.model.narrador import (ALIAS_TIPOS, normalizar_tipo,  # noqa: E402
+                                    plantilla_de, variantes)
+
+    # Un mismo suceso viene escrito de varias formas segun el export. Todas
+    # tienen que acabar en la misma plantilla, o la ficha se llena de frases
+    # genericas sin que nadie se entere.
+    comprobar(normalizar_tipo("hist figure died") == "hf died"
+              and normalizar_tipo("hist_figure_died") == "hf died"
+              and normalizar_tipo("HF DIED") == "hf died",
+              "'hist figure died', 'hist_figure_died' y 'HF DIED' son la misma muerte")
+    comprobar(plantilla_de("change_hf_state") is not None
+              and plantilla_de("CREATED_SITE") is not None,
+              "los guiones bajos y las mayusculas no dejan sin frase a un suceso")
+    comprobar(all(plantilla_de(destino) is not None for destino in ALIAS_TIPOS.values()),
+              f"los {len(ALIAS_TIPOS)} alias apuntan a una plantilla que existe")
+    comprobar("hist figure died" in variantes("hf died")
+              and "hf_died" in variantes("hf died"),
+              "las consultas a la base de datos preguntan por todas las formas")
+
+    # Las razas se leen en castellano, pero el codigo interno no se toca: es lo
+    # que usan los filtros y los colores.
+    comprobar(DIC.raza("DWARF") == "enano" and DIC.raza("elf") == "elfo",
+              "las razas comunes se leen en castellano")
+    comprobar(DIC.raza("GIANT_CAVE_SPIDER") == "araña gigante de las cavernas",
+              "y los codigos con guion bajo tambien se reconocen")
+    comprobar(DIC.raza("BLENDEC") == "Blendec",
+              "una criatura que no esta en el diccionario se enseña limpia, no se inventa")
+
+    # Las casillas de "ver el dato en bruto" se quitaron: que no vuelvan.
+    ui = (RAIZ / "web" / "js" / "ui.js").read_text(encoding="utf-8")
+    comprobar("interruptorBruto" not in ui and "verCrudo" not in ui,
+              "ya no hay casillas de 'ver el dato en bruto' por las fichas")
+
     print()
     if fallos:
         print(f"RESULTADO: {len(fallos)} comprobaciones han fallado.")
