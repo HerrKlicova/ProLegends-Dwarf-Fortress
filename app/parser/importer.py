@@ -96,6 +96,11 @@ class Importer:
             self._flush_all()
             self._write_small_sections()
             self._derive()
+            # Las regiones dicen hasta donde llega el mundo de verdad, no solo
+            # hasta donde hay sitios.
+            from ..model import terreno as _terreno
+
+            _terreno.ajustar_extension(self.conn, self.export_id)
             if propia:
                 self.conn.execute("COMMIT")
             self._finalize(ok=True, message="; ".join(self.pair.warnings))

@@ -20,7 +20,7 @@ from .errors import ProLegendsError
 app = FastAPI(
     title="ProLegends",
     description="Explorador local del archivo de leyendas de Dwarf Fortress",
-    version="1.3.2",
+    version="1.4.0",
     docs_url="/api/docs",
     redoc_url=None,
 )
@@ -42,6 +42,16 @@ def _preparar() -> None:
         rescatadas = almacen.migrar_desde_bd(conn)
         if rescatadas:
             print(f"  {rescatadas} crónica(s) guardadas ya en data/cronicas/")
+
+        # Hasta la 1.4.0 el tamaño del mundo se deducía solo de dónde había
+        # sitios, y eso se queda corto: hay mar y montaña donde no vive nadie.
+        # Las regiones sí cubren el mundo entero, así que se recalcula con
+        # ellas sin necesidad de reimportar nada.
+        from .model import terreno as _terreno
+
+        ajustados = _terreno.ajustar_extension(conn)
+        if ajustados:
+            print(f"  Tamaño del mundo corregido en {ajustados} export(s).")
     finally:
         conn.close()
 

@@ -10,6 +10,70 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.4.0 — El mapa, dibujado con tus datos
+
+*La grande. El mapa deja de ser una cuadrícula de puntos.*
+
+Hasta ahora el mapa era funcional pero era un diagrama: cuadraditos de colores
+flotando en negro. Ahora es un **atlas de pergamino**, con su mar, su costa, sus
+montañas y sus ríos.
+
+**Y sale entero de los XML que ya importas.** No hace falta que exportes mapas
+detallados ni que copies ninguna imagen del juego: el `_legends_plus.xml` trae la
+lista de casillas que ocupa cada región y el principal dice cómo se llama cada
+una y de qué tipo es. Cruzando las dos cosas sale el mundo entero, casilla a
+casilla, sin un solo hueco. Por eso la costa es exacta y no una aproximación.
+
+**Añadido**
+
+- **Mar y tierra de verdad**, con la costa dibujada a tinta y las líneas
+  paralelas a la orilla de las cartas antiguas.
+- **Cada bioma con su color y su símbolo**: las montañas se dibujan como
+  montañas, con su ladera sombreada; los bosques como grupos de árboles; las
+  selvas más tupidas; los desiertos punteados con sus dunas; las lomas,
+  los pantanos, la estepa, la tundra y los glaciares, cada uno con el suyo.
+- **Ríos** trazados como líneas curvas, no como escaleras de casillas, y más
+  gruesos cuanto más largo es su curso.
+- **Calzadas, puentes y túneles**, cada uno con su trazo.
+- **Picos con nombre**, con su nieve o su boca de volcán si el export dice que
+  es un volcán.
+- **Zoom y desplazamiento**: rueda para acercar, arrastrar para mover, doble
+  clic para volver a encajar el mundo entero. Los símbolos y el grosor de la
+  pluma no crecen al ampliar, como en un atlas de papel: lo que cambia es
+  cuánto terreno cabe.
+- **Los nombres aparecen al acercarte**, y se apartan entre ellos: antes que
+  amontonar etiquetas ilegibles, se deja alguna sin poner, empezando por las
+  menos importantes.
+- **Cartela** con el nombre del mundo y el año que estás mirando, **rosa de los
+  vientos**, **escala** en casillas y marco.
+- Los sitios ya no son cuadrados: cada clase tiene su silueta (casa, torre,
+  boca de cueva, tumba) sellada en tinta con un halo de papel para que se lea
+  sobre cualquier terreno, y las ruinas son dos muros caídos.
+- **El deslizador de año encaja de maravilla**: la geografía se dibuja una sola
+  vez y se reutiliza, así que recorrer los años cuesta 0,3 milésimas de segundo
+  por fotograma aunque el mapa sea un dibujo completo.
+
+**Arreglado**
+
+- **El tamaño del mundo estaba mal.** Se deducía solo de dónde había sitios, y
+  eso se queda corto: en un mundo hay mar y montaña donde no vive nadie. Ahora
+  lo dicen las regiones, que sí cubren el mundo entero. Se corrige solo al
+  arrancar, sin reimportar nada.
+
+**Lo que no se hace, a propósito**
+
+- Si tu export no trae las coordenadas de las regiones (por ejemplo si te falta
+  el `_legends_plus.xml`), **no se dibuja una costa inventada**: se dice que no
+  se puede y se explica por qué, y el mapa se queda como estaba.
+- Dwarf Fortress no da la altura de cada casilla en las leyendas, así que el
+  relieve se representa con símbolos de montaña y loma, que es lo que los datos
+  permiten decir, en vez de con un sombreado inventado.
+
+**No hay que reimportar nada.** Todo esto estaba ya guardado desde la primera
+importación; solo hacía falta saber leerlo.
+
+---
+
 ## v1.3.2 — La mudanza mira también en la versión anterior
 
 *Arreglo del arreglo de la 1.3.1.*

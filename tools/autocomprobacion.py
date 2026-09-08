@@ -616,6 +616,69 @@ def main() -> int:
             else:
                 os.environ["PROLEGENDS_HOME"] = guardado[6]
 
+        print("\n17. El mapa se dibuja con los datos, sin ficheros del jugador")
+        from app.model import terreno as terr  # noqa: E402
+
+        comprobar(terr.parse_coords("3,4|5,6|7,8") == [(3, 4), (5, 6), (7, 8)],
+                  "las coordenadas se leen separadas por barras, como las escribe DFHack")
+        comprobar(terr.parse_coords("1,2 3,4\n5,6") == [(1, 2), (3, 4), (5, 6)],
+                  "y también separadas por espacios o saltos de línea")
+        comprobar(terr.parse_coords(["9,9", "8,8"]) == [(9, 9), (8, 8)],
+                  "y repartidas en varias etiquetas")
+        comprobar(terr.parse_coords(None) == [] and terr.parse_coords(True) == [],
+                  "y si no hay nada, no se inventa una casilla")
+
+        geo_dir = tmp / "geografia"
+        generar(geo_dir, "--mundo", "mundogeo", "--token", "regionG", "--solo-uno",
+                "--anyo-final", "80", "--tam", "48", "--sitios", "40",
+                "--figuras", "200", "--eventos", "900")
+        conn7 = dbmod.connect(tmp / "geo.db")
+        dbmod.init_db(conn7)
+        import_all(conn7, imports_dir=geo_dir, verbose=False, log=lambda m: None)
+        eid = dbmod.one(conn7, "SELECT id FROM exports WHERE status = 'ok'")["id"]
+        mapa_geo = terr.terreno(conn7, eid)
+
+        comprobar(mapa_geo["hay_mapa"], "hay mapa dibujable a partir del export")
+        comprobar(mapa_geo["ancho"] == 48 and mapa_geo["alto"] == 48,
+                  f"el mundo mide lo que dicen las regiones: {mapa_geo['ancho']}x{mapa_geo['alto']}")
+        comprobar(len(mapa_geo["rejilla"]) == 48 * 48,
+                  "la rejilla trae una casilla por cada punto del mundo")
+        comprobar(mapa_geo["rejilla"].count(".") == 0,
+                  "sin huecos: las regiones cubren el mundo entero, así que la costa es exacta")
+        comprobar(any("cean" in b for b in mapa_geo["biomas"]),
+                  f"se distingue el mar de la tierra: {mapa_geo['biomas'][:4]}")
+        comprobar(len(mapa_geo["rios"]) > 0 and len(mapa_geo["rios"][0]["camino"]) > 2,
+                  "los ríos llegan con su recorrido")
+        comprobar(len(mapa_geo["construcciones"]) > 0,
+                  "y las calzadas, puentes y túneles con el suyo")
+        comprobar(len(mapa_geo["picos"]) > 0 and mapa_geo["picos"][0]["nombre"],
+                  "los picos con nombre traen sus coordenadas")
+
+        # El tamaño guardado tiene que cuadrar con el del mapa, o los pueblos
+        # saldrían flotando fuera de su tierra.
+        exp_geo = dbmod.one(conn7, "SELECT world_width, world_height FROM exports WHERE id = ?", (eid,))
+        comprobar((exp_geo["world_width"], exp_geo["world_height"]) == (48, 48),
+                  f"y el tamaño guardado coincide: {exp_geo['world_width']}x{exp_geo['world_height']}")
+
+        # Sin el _plus no hay coordenadas: no se dibuja una costa inventada.
+        solo_principal = tmp / "solo-principal"
+        solo_principal.mkdir()
+        for xml in geo_dir.glob("*-legends.xml"):
+            shutil.copy2(xml, solo_principal / xml.name)
+        conn8 = dbmod.connect(tmp / "solo.db")
+        dbmod.init_db(conn8)
+        import_all(conn8, imports_dir=solo_principal, verbose=False, log=lambda m: None)
+        eid8 = dbmod.one(conn8, "SELECT id FROM exports WHERE status = 'ok'")["id"]
+        pelado = terr.terreno(conn8, eid8)
+        comprobar(not pelado["hay_mapa"] and pelado["motivo"],
+                  "sin el _plus se dice que no hay mapa, en vez de inventarse la geografía")
+        comprobar(pelado["rios"] == [] and pelado["construcciones"] == [],
+                  "y no aparecen ríos ni calzadas de la nada")
+        comprobar(len(pelado["regiones"]) > 0,
+                  "aunque los nombres de las regiones sí se conservan")
+        conn7.close()
+        conn8.close()
+
         conn.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

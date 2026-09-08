@@ -25,11 +25,21 @@ const Mapa = (() => {
   let posiciones = [];          // cache de lo dibujado, para el raton
   let reproduciendo = null;
   let seleccionado = null;
+  // Zoom y desplazamiento. escala 1 = el mundo entero cabe en pantalla.
+  let vista = { escala: 1, x: 0, y: 0 };
+  let arrastre = null;
 
   const lienzo = () => document.getElementById('lienzo');
 
   async function cargar(exportId) {
     datos = await API.mapa(exportId);
+    // La geografia va aparte porque no cambia con el anyo: se pide una vez.
+    try {
+      Atlas.preparar(await API.terreno(exportId));
+    } catch (e) {
+      Atlas.preparar(null);
+      console.warn('No se ha podido cargar el terreno', e);
+    }
     historia = new Map();
     for (const [sid, y, owner, estado] of datos.propiedad) {
       if (!historia.has(sid)) historia.set(sid, []);
@@ -55,6 +65,7 @@ const Mapa = (() => {
     anyo = max;
     faccionesApagadas = new Set();
     seleccionado = null;
+    vista = { escala: 1, x: 0, y: 0 };
 
     pintarCapas();
     pintarLeyenda();
@@ -149,31 +160,46 @@ const Mapa = (() => {
     if (!datos) return;
     const c = lienzo();
     const ctx = c.getContext('2d');
-    const ancho = Math.max(1, datos.export.ancho || 1);
-    const alto = Math.max(1, datos.export.alto || 1);
-    const celda = Math.min(c.width / ancho, c.height / alto);
-    const offX = (c.width - celda * ancho) / 2;
-    const offY = (c.height - celda * alto) / 2;
+    /* El tamano del mundo sale de los datos. Cuando hay terreno mandan sus
+       coordenadas, que cubren el mundo entero; si no, solo se sabe hasta donde
+       llegan los sitios. Las dos capas TIENEN que usar la misma rejilla o los
+       pueblos aparecerian flotando fuera de su tierra. */
+    const geo = Atlas.hayMapa() ? Atlas.info() : null;
+    const ancho = Math.max(1, (geo ? geo.ancho : datos.export.ancho) || 1);
+    const alto = Math.max(1, (geo ? geo.alto : datos.export.alto) || 1);
+    const minX = geo ? geo.min_x : 0;
+    const minY = geo ? geo.min_y : 0;
+    const base = Math.min(c.width / ancho, c.height / alto);
+    const celda = base * vista.escala;
+    const offX = (c.width - celda * ancho) / 2 + vista.x;
+    const offY = (c.height - celda * alto) / 2 + vista.y;
 
-    ctx.fillStyle = '#0d0c0a';
-    ctx.fillRect(0, 0, c.width, c.height);
-
-    /* rejilla */
-    ctx.strokeStyle = 'rgba(255,255,255,.045)';
-    ctx.lineWidth = 1;
-    const paso = Math.max(1, Math.round(10 / Math.max(celda / 6, .35)));
-    for (let x = 0; x <= ancho; x += paso) {
-      ctx.beginPath(); ctx.moveTo(offX + x * celda, offY);
-      ctx.lineTo(offX + x * celda, offY + alto * celda); ctx.stroke();
+    /* El terreno se dibuja una vez y se estampa: mover el deslizador no
+       vuelve a pintar la geografia, que no cambia de un anyo a otro. */
+    if (Atlas.hayMapa()) {
+      ctx.drawImage(Atlas.capa(c.width, c.height, { celda, offX, offY }), 0, 0);
+    } else {
+      ctx.fillStyle = '#0d0c0a';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.strokeStyle = 'rgba(255,255,255,.045)';
+      ctx.lineWidth = 1;
+      const paso = Math.max(1, Math.round(10 / Math.max(celda / 6, .35)));
+      for (let x = 0; x <= ancho; x += paso) {
+        ctx.beginPath(); ctx.moveTo(offX + x * celda, offY);
+        ctx.lineTo(offX + x * celda, offY + alto * celda); ctx.stroke();
+      }
+      for (let y = 0; y <= alto; y += paso) {
+        ctx.beginPath(); ctx.moveTo(offX, offY + y * celda);
+        ctx.lineTo(offX + ancho * celda, offY + y * celda); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(217,164,65,.25)';
+      ctx.strokeRect(offX, offY, ancho * celda, alto * celda);
     }
-    for (let y = 0; y <= alto; y += paso) {
-      ctx.beginPath(); ctx.moveTo(offX, offY + y * celda);
-      ctx.lineTo(offX + ancho * celda, offY + y * celda); ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(217,164,65,.25)';
-    ctx.strokeRect(offX, offY, ancho * celda, alto * celda);
 
-    const tam = Math.max(4, Math.min(celda * 1.6, 13));
+    // Sobre pergamino los sellos van algo mas discretos: manda el mapa.
+    const tam = Atlas.hayMapa()
+      ? Math.max(4, Math.min(celda * 0.85, 24))
+      : Math.max(4, Math.min(celda * 1.6, 13));
     posiciones = [];
 
     for (const sitio of datos.sitios) {
@@ -189,8 +215,8 @@ const Mapa = (() => {
       const faccionRaiz = faccionRaizDe(est.owner);
       if (faccionRaiz !== null && faccionesApagadas.has(faccionRaiz)) continue;
 
-      const cx = offX + (sitio.x + 0.5) * celda;
-      const cy = offY + (sitio.y + 0.5) * celda;
+      const cx = offX + (sitio.x - minX + 0.5) * celda;
+      const cy = offY + (sitio.y - minY + 0.5) * celda;
       const color = ruina ? '#5a534b' : (raizPropietario || capaColor(sitio.capa));
 
       ctx.fillStyle = color;
@@ -198,10 +224,10 @@ const Mapa = (() => {
       ctx.lineWidth = 1;
       forma(ctx, sitio.capa, cx, cy, tam, ruina);
       if (seleccionado === sitio.id) {
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = Atlas.hayMapa() ? '#a8391f' : '#ffffff';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(cx, cy, tam * 0.95, 0, Math.PI * 2);
+        ctx.arc(cx, cy, tam * 1.05, 0, Math.PI * 2);
         ctx.stroke();
       }
       posiciones.push({ tipo: 'sitio', sitio, cx, cy, r: tam, estado: est });
@@ -212,28 +238,128 @@ const Mapa = (() => {
     for (const { bestia, site_id } of bestiasEn(anyo)) {
       const sitio = sitiosPorId.get(site_id);
       if (!sitio || sitio.x === null) continue;
-      const cx = offX + (sitio.x + 0.5) * celda;
-      const cy = offY + (sitio.y + 0.5) * celda - tam * 0.9;
-      ctx.fillStyle = '#e0b055';
-      ctx.strokeStyle = '#2b220f';
+      const cx = offX + (sitio.x - minX + 0.5) * celda;
+      const cy = offY + (sitio.y - minY + 0.5) * celda - tam * 0.9;
+      const garra = () => {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - tam * 0.6);
+        ctx.lineTo(cx + tam * 0.55, cy + tam * 0.45);
+        ctx.lineTo(cx - tam * 0.55, cy + tam * 0.45);
+        ctx.closePath();
+      };
+      if (Atlas.hayMapa()) {
+        ctx.strokeStyle = 'rgba(233,220,190,.9)';
+        ctx.lineWidth = Math.max(2.5, tam * 0.45);
+        garra(); ctx.stroke();
+      }
+      ctx.fillStyle = '#c8553d';
+      ctx.strokeStyle = '#3f3527';
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - tam * 0.6);
-      ctx.lineTo(cx + tam * 0.55, cy + tam * 0.45);
-      ctx.lineTo(cx - tam * 0.55, cy + tam * 0.45);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
+      garra(); ctx.fill(); ctx.stroke();
       posiciones.push({ tipo: 'bestia', bestia, cx, cy, r: tam * 0.7 });
+    }
+
+    if (Atlas.hayMapa()) {
+      etiquetas(ctx, celda);
+      cartela(ctx, offX, offY);
     }
 
     document.getElementById('anyo-txt').textContent = anyo;
     const visibles = posiciones.filter((p) => p.tipo === 'sitio').length;
     document.getElementById('nota-mapa').textContent =
       `Mundo de ${ancho}x${alto} casillas deducido de las coordenadas. ` +
-      `${visibles} sitios visibles en el año ${anyo} de ${datos.sitios.length} en total.`;
+      `${visibles} sitios visibles en el año ${anyo} de ${datos.sitios.length} en total.` +
+      (vista.escala > 1.01 ? `  ·  ampliado ${vista.escala.toFixed(1)}x` : '') +
+      (Atlas.hayMapa()
+        ? '  ·  rueda para acercar, arrastra para mover, doble clic para encajarlo.'
+        : '  ·  ' + (Atlas.motivo() || ''));
     const nBestias = posiciones.filter((p) => p.tipo === 'bestia').length;
     document.getElementById('nota-bestias').textContent = datos.bestias.length
       ? `${nBestias} con paradero conocido en el año ${anyo} (de ${datos.bestias.length} registradas).`
       : 'Este export no registra bestias con paradero conocido.';
+  }
+
+  /* La cartela del atlas: como se llama el mundo y en que anyo lo estamos
+     mirando. Va fuera del terreno cacheado porque el anyo si cambia. */
+  function cartela(ctx, offX, offY) {
+    const mundo = App.mundoActual();
+    if (!mundo) return;
+    const titulo = String(mundo.nombre || '').toUpperCase();
+    const sub = mundo.altnombre || '';
+    const pie = `Año ${anyo}`;
+
+    ctx.save();
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.font = '600 15px Georgia, "Times New Roman", serif';
+    const anchoTitulo = ctx.measureText(titulo).width;
+    ctx.font = 'italic 11px Georgia, "Times New Roman", serif';
+    const anchoSub = ctx.measureText(sub).width;
+    const w = Math.min(320, Math.max(anchoTitulo, anchoSub, 90) + 26);
+    const h = sub ? 62 : 48;
+    const x = offX + 14, y = offY + 14;
+
+    ctx.fillStyle = 'rgba(233,220,190,.93)';
+    ctx.strokeStyle = '#4a3b28';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
+
+    ctx.fillStyle = '#3f3527';
+    ctx.font = '600 15px Georgia, "Times New Roman", serif';
+    ctx.fillText(titulo, x + 13, y + 12, w - 26);
+    if (sub) {
+      ctx.fillStyle = '#6b5c45';
+      ctx.font = 'italic 11px Georgia, "Times New Roman", serif';
+      ctx.fillText(sub, x + 13, y + 32, w - 26);
+    }
+    ctx.fillStyle = '#8a5a2b';
+    ctx.font = '600 12px Georgia, "Times New Roman", serif';
+    ctx.fillText(pie, x + 13, y + h - 20);
+    ctx.restore();
+  }
+
+  /* Nombres sobre el mapa. Aparecen segun se amplia y se apartan entre ellos:
+     mas vale no poner una etiqueta que amontonarlas y no leer ninguna. */
+  function etiquetas(ctx, celda) {
+    if (celda < 13) return;
+    const cuerpo = Math.max(9, Math.min(celda * 0.42, 15));
+    ctx.font = `${cuerpo}px Georgia, "Times New Roman", serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.lineJoin = 'round';
+
+    // Primero los sitios grandes: si hay que renunciar a alguno, que sea a
+    // una cueva perdida y no a una capital.
+    const orden = { asentamiento: 0, torre: 1, boveda: 1, tumba: 2, guarida: 3, cueva: 3 };
+    const candidatos = posiciones
+      .filter((p) => p.tipo === 'sitio' && p.sitio.nombre)
+      .sort((a, b) => (orden[a.sitio.capa] ?? 4) - (orden[b.sitio.capa] ?? 4));
+
+    const puestas = [];
+    const choca = (c) => puestas.some((o) =>
+      c.x1 < o.x2 && c.x2 > o.x1 && c.y1 < o.y2 && c.y2 > o.y1);
+
+    let escritas = 0;
+    for (const p of candidatos) {
+      if (escritas > 220) break;
+      const texto = p.sitio.nombre;
+      const w = ctx.measureText(texto).width;
+      const cy = p.cy - p.r * 0.8 - 2;
+      const caja = { x1: p.cx - w / 2 - 2, x2: p.cx + w / 2 + 2,
+                     y1: cy - cuerpo - 1, y2: cy + 2 };
+      if (choca(caja)) continue;
+      puestas.push(caja);
+      escritas++;
+      ctx.strokeStyle = 'rgba(233,220,190,.88)';
+      ctx.lineWidth = 3;
+      ctx.strokeText(texto, p.cx, cy);
+      ctx.fillStyle = '#3f3527';
+      ctx.fillText(texto, p.cx, cy);
+    }
   }
 
   function faccionRaizDe(entityId) {
@@ -244,31 +370,83 @@ const Mapa = (() => {
 
   const capaColor = (capa) => (CAPAS.find((c) => c.id === capa) || {}).color || '#8a8f98';
 
-  function forma(ctx, capa, cx, cy, tam, ruina) {
+  /* Silueta de cada clase de sitio. Se dibuja como un sello de tinta: primero
+     un halo del color del papel, para que se lea sobre cualquier terreno, y
+     encima el relleno de su faccion perfilado en tinta. */
+  function trazo(ctx, capa, cx, cy, tam) {
     ctx.beginPath();
+    if (capa === 'torre' || capa === 'boveda') {
+      ctx.moveTo(cx, cy - tam * 0.72);
+      ctx.lineTo(cx + tam * 0.44, cy - tam * 0.1);
+      ctx.lineTo(cx + tam * 0.44, cy + tam * 0.6);
+      ctx.lineTo(cx - tam * 0.44, cy + tam * 0.6);
+      ctx.lineTo(cx - tam * 0.44, cy - tam * 0.1);
+      ctx.closePath();
+    } else if (capa === 'guarida') {
+      // Una boca de cueva: medio circulo apoyado en el suelo.
+      ctx.moveTo(cx - tam * 0.55, cy + tam * 0.5);
+      ctx.arc(cx, cy + tam * 0.5, tam * 0.55, Math.PI, 0);
+      ctx.closePath();
+    } else if (capa === 'cueva') {
+      ctx.arc(cx, cy, tam * 0.48, 0, Math.PI * 2);
+    } else if (capa === 'tumba') {
+      ctx.moveTo(cx - tam * 0.38, cy + tam * 0.55);
+      ctx.lineTo(cx - tam * 0.38, cy - tam * 0.1);
+      ctx.arc(cx, cy - tam * 0.1, tam * 0.38, Math.PI, 0);
+      ctx.lineTo(cx + tam * 0.38, cy + tam * 0.55);
+      ctx.closePath();
+    } else {
+      // Asentamiento: casita con tejado.
+      ctx.moveTo(cx, cy - tam * 0.7);
+      ctx.lineTo(cx + tam * 0.6, cy - tam * 0.12);
+      ctx.lineTo(cx + tam * 0.44, cy - tam * 0.12);
+      ctx.lineTo(cx + tam * 0.44, cy + tam * 0.58);
+      ctx.lineTo(cx - tam * 0.44, cy + tam * 0.58);
+      ctx.lineTo(cx - tam * 0.44, cy - tam * 0.12);
+      ctx.lineTo(cx - tam * 0.6, cy - tam * 0.12);
+      ctx.closePath();
+    }
+  }
+
+  function forma(ctx, capa, cx, cy, tam, ruina) {
+    const papel = Atlas.hayMapa();
+    const relleno = ctx.fillStyle;
+
     if (ruina) {
-      ctx.rect(cx - tam / 2, cy - tam / 2, tam, tam);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,.35)';
-      ctx.beginPath();
-      ctx.moveTo(cx - tam / 2, cy - tam / 2); ctx.lineTo(cx + tam / 2, cy + tam / 2);
-      ctx.moveTo(cx + tam / 2, cy - tam / 2); ctx.lineTo(cx - tam / 2, cy + tam / 2);
-      ctx.stroke();
+      // Una ruina es una silueta rota: dos muros de pie y nada mas.
+      if (papel) {
+        ctx.strokeStyle = 'rgba(233,220,190,.9)';
+        ctx.lineWidth = Math.max(2.5, tam * 0.45);
+        muro(ctx, cx, cy, tam); ctx.stroke();
+      }
+      ctx.strokeStyle = papel ? '#5b5048' : 'rgba(255,255,255,.45)';
+      ctx.lineWidth = Math.max(1.2, tam * 0.16);
+      muro(ctx, cx, cy, tam); ctx.stroke();
       return;
     }
-    if (capa === 'torre' || capa === 'boveda') {
-      ctx.moveTo(cx, cy - tam * 0.62);
-      ctx.lineTo(cx + tam * 0.62, cy);
-      ctx.lineTo(cx, cy + tam * 0.62);
-      ctx.lineTo(cx - tam * 0.62, cy);
-      ctx.closePath();
-    } else if (capa === 'guarida' || capa === 'cueva' || capa === 'tumba') {
-      ctx.arc(cx, cy, tam * 0.5, 0, Math.PI * 2);
-    } else {
-      ctx.rect(cx - tam / 2, cy - tam / 2, tam, tam);
+
+    if (papel) {
+      ctx.strokeStyle = 'rgba(233,220,190,.92)';
+      ctx.lineWidth = Math.max(2.5, tam * 0.5);
+      ctx.lineJoin = 'round';
+      trazo(ctx, capa, cx, cy, tam); ctx.stroke();
     }
+    ctx.fillStyle = relleno;
+    ctx.strokeStyle = papel ? '#3f3527' : 'rgba(0,0,0,.55)';
+    ctx.lineWidth = papel ? Math.max(1, tam * 0.13) : 1;
+    trazo(ctx, capa, cx, cy, tam);
     ctx.fill();
     ctx.stroke();
+  }
+
+  function muro(ctx, cx, cy, tam) {
+    ctx.beginPath();
+    ctx.moveTo(cx - tam * 0.45, cy + tam * 0.5);
+    ctx.lineTo(cx - tam * 0.45, cy - tam * 0.2);
+    ctx.lineTo(cx - tam * 0.1, cy - tam * 0.2);
+    ctx.moveTo(cx + tam * 0.15, cy + tam * 0.5);
+    ctx.lineTo(cx + tam * 0.45, cy + tam * 0.5);
+    ctx.lineTo(cx + tam * 0.45, cy + tam * 0.05);
   }
 
   /* ---------------------------------------------------------------- raton */
@@ -288,6 +466,22 @@ const Mapa = (() => {
   }
 
   function mover(evento) {
+    if (arrastre) {
+      if (arrastre.soltado) { arrastre = null; }
+      else if (evento.buttons & 1) {
+        const [px, py] = enPixeles(evento);
+        arrastre.movido = Math.max(arrastre.movido,
+                                   Math.abs(px - arrastre.px) + Math.abs(py - arrastre.py));
+        vista.x = arrastre.x0 + (px - arrastre.px);
+        vista.y = arrastre.y0 + (py - arrastre.py);
+        ajustarVista();
+        document.getElementById('pista').classList.add('oculta');
+        dibujar();
+        return;
+      } else {
+        arrastre = null;
+      }
+    }
     const objetivo = bajoElRaton(evento);
     const pista = document.getElementById('pista');
     if (!objetivo) { pista.classList.add('oculta'); return; }
@@ -317,6 +511,9 @@ const Mapa = (() => {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   async function pinchar(evento) {
+    // Soltar tras arrastrar no es pinchar en un sitio.
+    if (arrastre && arrastre.movido > 4) { arrastre = null; return; }
+    arrastre = null;
     const objetivo = bajoElRaton(evento);
     if (!objetivo) return;
     if (objetivo.tipo === 'bestia') {
@@ -398,9 +595,64 @@ const Mapa = (() => {
     });
     const c = lienzo();
     c.addEventListener('mousemove', mover);
-    c.addEventListener('mouseleave', () => document.getElementById('pista').classList.add('oculta'));
+    c.addEventListener('mouseleave', () => {
+      document.getElementById('pista').classList.add('oculta');
+      arrastre = null;
+    });
     c.addEventListener('click', pinchar);
+    c.addEventListener('wheel', rueda, { passive: false });
+    c.addEventListener('mousedown', empezarArrastre);
+    window.addEventListener('mouseup', () => { if (arrastre) arrastre.soltado = true; });
+    c.addEventListener('dblclick', encajar);
     window.addEventListener('resize', () => { ajustarLienzo(); dibujar(); });
+  }
+
+  /* ------------------------------------------------------ zoom y arrastre */
+  function enPixeles(evento) {
+    const c = lienzo();
+    const caja = c.getBoundingClientRect();
+    return [(evento.clientX - caja.left) * (c.width / caja.width),
+            (evento.clientY - caja.top) * (c.height / caja.height)];
+  }
+
+  function rueda(evento) {
+    if (!datos) return;
+    evento.preventDefault();
+    const [px, py] = enPixeles(evento);
+    const antes = vista.escala;
+    const factor = Math.exp(-evento.deltaY * 0.0016);
+    vista.escala = Math.min(9, Math.max(1, antes * factor));
+    if (vista.escala === antes) return;
+    // El punto que hay bajo el cursor se queda donde está: se amplía hacia
+    // donde estás mirando, no hacia el centro.
+    const c = lienzo();
+    const k = vista.escala / antes;
+    vista.x = px - (px - (vista.x + c.width / 2)) * k - c.width / 2;
+    vista.y = py - (py - (vista.y + c.height / 2)) * k - c.height / 2;
+    ajustarVista();
+    dibujar();
+  }
+
+  function empezarArrastre(evento) {
+    if (!datos || evento.button !== 0) return;
+    const [px, py] = enPixeles(evento);
+    arrastre = { px, py, x0: vista.x, y0: vista.y, movido: 0, soltado: false };
+  }
+
+  /* No dejar que el mundo se escape de la ventana. */
+  function ajustarVista() {
+    const c = lienzo();
+    const margen = Math.min(c.width, c.height) * 0.35;
+    const limX = Math.max(0, (c.width * vista.escala - c.width) / 2) + margen;
+    const limY = Math.max(0, (c.height * vista.escala - c.height) / 2) + margen;
+    vista.x = Math.max(-limX, Math.min(limX, vista.x));
+    vista.y = Math.max(-limY, Math.min(limY, vista.y));
+    if (vista.escala <= 1.001) { vista.x = 0; vista.y = 0; }
+  }
+
+  function encajar() {
+    vista = { escala: 1, x: 0, y: 0 };
+    dibujar();
   }
 
   function reproducir() {

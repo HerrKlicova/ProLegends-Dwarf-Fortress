@@ -206,18 +206,31 @@ python -m app.cli ordenar --aplicar --sin-carpetas   renombra sin crear carpetas
 ## Qué puedes hacer
 
 ### Mapa del mundo
-Rejilla del tamaño real del mundo (deducido de las coordenadas de los sitios, no
-supuesto), con todos los sitios colocados.
+Un atlas de pergamino del mundo entero, **dibujado a partir de tus XML**. No hace
+falta que exportes mapas detallados ni que copies ninguna imagen del juego.
 
+- **Mar, costa y biomas de verdad.** El `_legends_plus.xml` trae la lista de
+  casillas que ocupa cada región y el principal dice cómo se llama y de qué tipo
+  es; cruzando las dos cosas sale el mundo casilla a casilla, sin un solo hueco,
+  así que la costa es exacta. Las montañas se dibujan como montañas, los bosques
+  como árboles y los desiertos con sus dunas.
+- **Ríos, calzadas, puentes, túneles y picos con nombre**, cada uno con su trazo.
 - **Deslizador de año**: al moverlo, el mapa muestra el estado del mundo en ese
   año — quién poseía cada sitio entonces, qué estaba en ruinas y qué bestias
   seguían vivas y dónde. El botón ▶ recorre la historia entera sola.
+- **Zoom y desplazamiento**: rueda para acercar, arrastrar para mover, doble clic
+  para encajar el mundo entero. Los nombres van apareciendo al acercarte, y se
+  apartan entre ellos para que no se amontonen.
 - **Capas conmutables**: asentamientos, ruinas, guaridas de bestias, torres y
   sitios de nigromantes, bóvedas y sitios misteriosos, cuevas y tumbas.
 - **Colores por raza y facción**, repartidos a partir de las razas que existan en
   ese mundo concreto.
 - **Clic en un sitio** → ficha lateral: tipo, propietarios a lo largo del tiempo,
   estructuras, artefactos, figuras vinculadas y todos los eventos ocurridos allí.
+
+Si a un export le faltan las coordenadas de las regiones, **no se inventa una
+costa**: se dice que no se puede dibujar y por qué, y el mapa se queda en la
+rejilla de siempre.
 
 ### Figuras históricas
 Buscador por nombre, con filtros de raza y de vivas/muertas. La ficha trae raza,
@@ -271,7 +284,8 @@ Los XML de legends tienen varias trampas. Están todas contempladas:
 | El `_plus` complementa al principal | Se fusionan por ID: el principal da el nombre, el `_plus` la raza, el tipo, los secretos y las tramas |
 | La propiedad de un sitio no es un campo | Se reconstruye recorriendo los eventos por año (`created site`, `site taken over`, `destroyed site`, `hf destroyed site`) y se guarda el histórico completo, que es lo que alimenta el deslizador |
 | Las entidades forman jerarquías | Se sube por la cadena de `<child>` hasta la civilización raíz |
-| El tamaño del mundo varía | Se deduce de las coordenadas observadas, no se asume ninguno |
+| El tamaño del mundo varía | Se deduce de las coordenadas observadas (regiones y sitios), no se asume ninguno |
+| El XML no trae ningún mapa | Se reconstruye con las casillas que declara cada región, que cubren el mundo entero |
 | `&` sueltos sin escapar | Se escapan antes de parsear |
 
 Nada está fijado a un mundo concreto: ni identificadores, ni nombres de
@@ -294,6 +308,7 @@ app/
     entities.py    jerarquía de entidades
     ownership.py   propiedad de los sitios año a año
     fortress.py    detección, resumen, diff y avisos de tu fortaleza
+    terreno.py     rejilla de biomas, ríos y calzadas del mundo
   api/         endpoints HTTP              (la interfaz solo habla con esto)
   ai/          crónicas narradas
   juego.py     encuentra la carpeta de Dwarf Fortress y trae sus exports

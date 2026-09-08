@@ -46,6 +46,184 @@ def palabra(rnd: random.Random, n: int = 3) -> str:
     return "".join(rnd.choice(SILABAS) for _ in range(n))
 
 
+# --------------------------------------------------------------- geografia
+# Un mundo con costas, relieve, biomas y rios, para poder probar el mapa sin
+# tener a mano un export de verdad. Imita la forma en que DF reparte los datos:
+# el fichero principal da el nombre y el tipo de cada region, y el _plus da las
+# coordenadas de sus casillas.
+TIPOS_REGION = ["Ocean", "Lake", "Mountains", "Hills", "Forest", "Jungle",
+                "Grassland", "Steppe", "Desert", "Tundra", "Glacier", "Wetland"]
+
+
+def _suave(t: float) -> float:
+    return t * t * (3 - 2 * t)
+
+
+def _ruido(rnd: random.Random, tam: int, celdas: int) -> list[list[float]]:
+    """Ruido de valor interpolado: manchas suaves, sin dependencias."""
+    rejilla = [[rnd.random() for _ in range(celdas + 2)] for _ in range(celdas + 2)]
+    salida = [[0.0] * tam for _ in range(tam)]
+    for y in range(tam):
+        fy = y / max(1, tam) * celdas
+        y0 = int(fy)
+        ty = _suave(fy - y0)
+        for x in range(tam):
+            fx = x / max(1, tam) * celdas
+            x0 = int(fx)
+            tx = _suave(fx - x0)
+            arriba = rejilla[y0][x0] * (1 - tx) + rejilla[y0][x0 + 1] * tx
+            abajo = rejilla[y0 + 1][x0] * (1 - tx) + rejilla[y0 + 1][x0 + 1] * tx
+            salida[y][x] = arriba * (1 - ty) + abajo * ty
+    return salida
+
+
+def _capas(rnd: random.Random, tam: int, capas=((3, 1.0), (7, 0.5), (15, 0.25))):
+    total = [[0.0] * tam for _ in range(tam)]
+    peso_total = sum(p for _, p in capas)
+    for celdas, peso in capas:
+        capa = _ruido(rnd, tam, celdas)
+        for y in range(tam):
+            fila, suya = total[y], capa[y]
+            for x in range(tam):
+                fila[x] += suya[x] * peso
+    for y in range(tam):
+        for x in range(tam):
+            total[y][x] /= peso_total
+    return total
+
+
+def construir_geografia(rnd: random.Random, tam: int) -> dict:
+    altura = _capas(rnd, tam)
+    humedad = _capas(rnd, tam, ((2, 1.0), (5, 0.5)))
+
+    # Empujar el mar hacia los bordes para que salgan continentes y no una
+    # mancha que llega hasta el marco.
+    centro = (tam - 1) / 2
+    for y in range(tam):
+        for x in range(tam):
+            dx = abs(x - centro) / max(1.0, centro)
+            dy = abs(y - centro) / max(1.0, centro)
+            borde = max(dx, dy)
+            altura[y][x] = altura[y][x] * (1.0 - 0.75 * borde ** 3)
+
+    MAR = 0.42
+    bioma = [["Ocean"] * tam for _ in range(tam)]
+    for y in range(tam):
+        # La latitud decide el frio: polos arriba y abajo.
+        lat = abs(y - centro) / max(1.0, centro)
+        for x in range(tam):
+            h, w = altura[y][x], humedad[y][x]
+            if h < MAR:
+                bioma[y][x] = "Ocean"
+            elif lat > 0.93:
+                bioma[y][x] = "Glacier"
+            elif lat > 0.82:
+                bioma[y][x] = "Tundra"
+            elif h > 0.70:
+                bioma[y][x] = "Mountains"
+            elif h > 0.60:
+                bioma[y][x] = "Hills"
+            elif h < MAR + 0.03 and w > 0.62:
+                bioma[y][x] = "Wetland"
+            elif w > 0.68:
+                bioma[y][x] = "Jungle" if lat < 0.3 else "Forest"
+            elif w > 0.50:
+                bioma[y][x] = "Forest" if lat < 0.65 else "Grassland"
+            elif w > 0.34:
+                bioma[y][x] = "Grassland" if lat < 0.6 else "Steppe"
+            else:
+                bioma[y][x] = "Desert" if lat < 0.55 else "Steppe"
+
+    # Lagos: agua sin salida al mar. Se buscan las bolsas de oceano que no
+    # tocan el borde del mundo.
+    visto = [[False] * tam for _ in range(tam)]
+    for y0 in range(tam):
+        for x0 in range(tam):
+            if visto[y0][x0] or bioma[y0][x0] != "Ocean":
+                continue
+            bolsa, pila, toca_borde = [], [(x0, y0)], False
+            visto[y0][x0] = True
+            while pila:
+                x, y = pila.pop()
+                bolsa.append((x, y))
+                if x in (0, tam - 1) or y in (0, tam - 1):
+                    toca_borde = True
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < tam and 0 <= ny < tam and not visto[ny][nx] \
+                            and bioma[ny][nx] == "Ocean":
+                        visto[ny][nx] = True
+                        pila.append((nx, ny))
+            if not toca_borde and len(bolsa) <= max(24, tam):
+                for x, y in bolsa:
+                    bioma[y][x] = "Lake"
+
+    tierra = {(x, y) for y in range(tam) for x in range(tam)
+              if bioma[y][x] not in ("Ocean", "Lake")}
+
+    # --- regiones: cada mancha contigua del mismo bioma es una region -----
+    regiones, marca = [], [[False] * tam for _ in range(tam)]
+    for y0 in range(tam):
+        for x0 in range(tam):
+            if marca[y0][x0]:
+                continue
+            tipo = bioma[y0][x0]
+            casillas, pila = [], [(x0, y0)]
+            marca[y0][x0] = True
+            while pila:
+                x, y = pila.pop()
+                casillas.append((x, y))
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < tam and 0 <= ny < tam and not marca[ny][nx] \
+                            and bioma[ny][nx] == tipo:
+                        marca[ny][nx] = True
+                        pila.append((nx, ny))
+            regiones.append({"id": len(regiones), "tipo": tipo,
+                             "nombre": palabra(rnd, 2), "casillas": casillas})
+
+    # --- rios: desde lo alto, siempre cuesta abajo, hasta el agua ---------
+    rios = []
+    cumbres = sorted(((altura[y][x], x, y) for x, y in tierra), reverse=True)
+    for _, x, y in cumbres[: max(3, tam // 6)]:
+        camino, visitadas = [], set()
+        while True:
+            camino.append((x, y))
+            visitadas.add((x, y))
+            if bioma[y][x] in ("Ocean", "Lake") or len(camino) > tam * 2:
+                break
+            # Cuesta abajo, sin volver sobre lo andado. Un rio se acaba cuando
+            # deja de bajar: asi no salen espirales ni rectas infinitas.
+            cerca = {(cx + dx, cy + dy) for cx, cy in camino[-5:]
+                     for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
+            vecinas = [(altura[ny][nx] + (0.02 if (nx, ny) in cerca else 0.0), nx, ny)
+                       for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+                       if 0 <= nx < tam and 0 <= ny < tam and (nx, ny) not in visitadas]
+            if not vecinas:
+                break
+            coste, nx, ny = min(vecinas)
+            if altura[ny][nx] > altura[y][x]:
+                break
+            x, y = nx, ny
+        if len(camino) >= 4:
+            rios.append({"nombre": palabra(rnd, 2), "camino": camino})
+
+    # --- picos con nombre -------------------------------------------------
+    picos, puestos = [], []
+    for h, x, y in cumbres:
+        if bioma[y][x] != "Mountains":
+            continue
+        if any(abs(x - px) + abs(y - py) < tam // 5 for px, py in puestos):
+            continue
+        puestos.append((x, y))
+        picos.append({"id": len(picos), "nombre": palabra(rnd, 2), "x": x, "y": y,
+                      "altura": int(1000 + h * 4000),
+                      "volcan": 1 if rnd.random() < 0.25 else 0})
+        if len(picos) >= 4:
+            break
+
+    return {"tam": tam, "altura": altura, "bioma": bioma, "tierra": tierra,
+            "regiones": regiones, "rios": rios, "picos": picos}
+
+
 def construir_mundo(args):
     """Construye el mundo entero una sola vez, hasta el anyo final.
 
@@ -77,10 +255,18 @@ def construir_mundo(args):
         gobiernos.append((s, siguiente, civ))
         siguiente += 1
 
+    geo = construir_geografia(rnd, tam)
+    # Los asentamientos van en tierra firme, como en un mundo de verdad.
+    libres = sorted(geo["tierra"])
+    rnd.shuffle(libres)
+
     sitios, ocupadas = [], set()
     for s in range(n_sitios):
         while True:
-            x, y = rnd.randrange(tam), rnd.randrange(tam)
+            if libres:
+                x, y = libres.pop()
+            else:
+                x, y = rnd.randrange(tam), rnd.randrange(tam)
             if (x, y) not in ocupadas:
                 ocupadas.add((x, y)); break
         nombre = palabra(rnd, rnd.randint(2, 4))
@@ -189,8 +375,23 @@ def construir_mundo(args):
             "atacante": atacante, "defensor": defensor,
         })
 
-    regiones = [(i, palabra(rnd, 2), rnd.choice(["Forest", "Mountains", "Desert", "Tundra",
-                                                 "Jungle", "Ocean"])) for i in range(24)]
+    # Las regiones salen de la geografia: cada mancha contigua de un bioma.
+    regiones = geo["regiones"]
+
+    # Calzadas, puentes y tuneles entre sitios cercanos, con recorrido en ele.
+    construcciones = []
+    for i in range(min(len(sitios) - 1, max(4, len(sitios) // 6))):
+        a = sitios[i]
+        b = min((s for s in sitios if s["id"] != a["id"]),
+                key=lambda s: abs(s["x"] - a["x"]) + abs(s["y"] - a["y"]))
+        camino = [(x, a["y"]) for x in range(min(a["x"], b["x"]), max(a["x"], b["x"]) + 1)]
+        camino += [(b["x"], y) for y in range(min(a["y"], b["y"]), max(a["y"], b["y"]) + 1)]
+        if len(camino) < 2:
+            continue
+        tipo = ["road", "bridge", "tunnel"][i % 3]
+        construcciones.append({"id": len(construcciones), "tipo": tipo,
+                               "nombre": f"the {tipo} of {palabra(rnd, 2)}",
+                               "camino": camino})
     poblaciones = [(i, entidades[i]["raza"], rnd.randrange(200, 9000), i) for i in range(n_civ)]
     secretos = {f["id"] for f in figuras if f["id"] % 61 == 0}
     tramas = {f["id"]: rnd.choice(["corrupt", "sabotage", "infiltrate"])
@@ -200,6 +401,7 @@ def construir_mundo(args):
         "entidades": entidades, "gobiernos": gobiernos, "sitios": sitios, "figuras": figuras,
         "artefactos": artefactos, "eventos": eventos, "guerras": guerras, "regiones": regiones,
         "poblaciones": poblaciones, "secretos": secretos, "tramas": tramas, "n_civ": n_civ,
+        "geo": geo, "construcciones": construcciones,
     }
 
 
@@ -221,9 +423,9 @@ def recortar(mundo, args, anyo: int, con_fortaleza: bool):
     m = ['<?xml version="1.0" encoding=\'CP437\'?>', "<df_world>",
          f"<name>{args.mundo}</name>",
          f"<altname>The Universe of {args.mundo.title()}{SOL}</altname>", "<regions>"]
-    for i, nombre, tipo in mundo["regiones"]:
-        m.append(f"<region><id>{i}</id><name>the region of {nombre}</name>"
-                 f"<type>{tipo}</type></region>")
+    for r in mundo["regiones"]:
+        m.append(f"<region><id>{r['id']}</id><name>the region of {r['nombre']}</name>"
+                 f"<type>{r['tipo']}</type></region>")
     m.append("</regions>")
 
     m.append("<sites>")
@@ -328,6 +530,38 @@ def recortar(mundo, args, anyo: int, con_fortaleza: bool):
                  f"<site_link><link_type>{f['vinculo_sitio']}</link_type>"
                  f"<site_id>{sitio}</site_id></site_link></historical_figure>")
     p.append("</historical_figures>")
+    # La geometria del mundo va en el _plus, igual que en los exports reales:
+    # el principal dice como se llama cada region y este dice donde esta.
+    p.append("<regions>")
+    for r in mundo["regiones"]:
+        coords = "|".join(f"{x},{y}" for x, y in r["casillas"])
+        p.append(f"<region><id>{r['id']}</id><coords>{coords}</coords>"
+                 f"<evilness>{r['id'] % 3}</evilness></region>")
+    p.append("</regions>")
+
+    p.append("<rivers>")
+    for i, rio in enumerate(mundo["geo"]["rios"]):
+        camino = "|".join(f"{x},{y}" for x, y in rio["camino"])
+        p.append(f"<river><name>the river of {rio['nombre']}</name>"
+                 f"<path>{camino}</path></river>")
+    p.append("</rivers>")
+
+    p.append("<world_constructions>")
+    for c in mundo["construcciones"]:
+        coords = "|".join(f"{x},{y}" for x, y in c["camino"])
+        p.append(f"<world_construction><id>{c['id']}</id><name>{c['nombre']}</name>"
+                 f"<type>{c['tipo']}</type><coords>{coords}</coords></world_construction>")
+    p.append("</world_constructions>")
+
+    p.append("<mountain_peaks>")
+    for pico in mundo["geo"]["picos"]:
+        p.append(f"<mountain_peak><id>{pico['id']}</id>"
+                 f"<name>the peak of {pico['nombre']}</name>"
+                 f"<coords>{pico['x']},{pico['y']}</coords>"
+                 f"<height>{pico['altura']}</height>"
+                 f"<is_volcano>{pico['volcan']}</is_volcano></mountain_peak>")
+    p.append("</mountain_peaks>")
+
     p.append("<entity_populations>")
     for i, raza, cuenta, civ in mundo["poblaciones"]:
         p.append(f"<entity_population><id>{i}</id><race>{raza}</race>"

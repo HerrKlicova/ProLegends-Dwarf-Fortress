@@ -91,7 +91,7 @@ la interfaz: mover ficheros de la carpeta de otro programa no compensa.
 
 ---
 
-## v1.4.0 — El mapa, primera mitad
+## v1.4.0 — El mapa, primera mitad ✅ HECHO
 
 > De cuadrícula con puntos de colores a mapa que apetece mirar.
 
@@ -159,6 +159,19 @@ dibujará una costa falsa; el mapa sería entonces un atlas más abstracto, con 
 que sí sabemos (sitios, montañas y ríos con nombre, territorios) sobre un fondo
 liso de pergamino. Sigue siendo bonito, pero no es lo mismo. **Por eso el Paso 0
 va antes.**
+
+**Cómo quedó.** Camino **B**, el de no depender de nada externo: las regiones
+del `_plus` traen sus casillas y cubren el mundo entero sin huecos, así que la
+costa sale exacta. Hechos: mar y costa, biomas con su color y su símbolo, ríos,
+calzadas, picos con nombre, zoom y desplazamiento, etiquetas que se apartan
+entre ellas, cartela, rosa de los vientos, escala y marco, y siluetas propias
+para cada clase de sitio.
+
+Lo que **no** se ha hecho y por qué: el sombreado de relieve a partir de un mapa
+de elevación, porque las leyendas de DF no dan la altura de cada casilla; en su
+lugar el relieve se dice con símbolos de montaña y loma. El camino A (los
+`.bmp`) queda pendiente como mejora opcional para la segunda mitad, no como
+requisito: no hace falta para nada.
 
 **Tamaño.** Grande. Dos o tres sesiones.
 

@@ -180,6 +180,20 @@ def _bestias(conn: sqlite3.Connection, export_id: int) -> list[dict]:
     return salida
 
 
+@router.get("/exports/{export_id}/terreno")
+def terreno_del_mundo(export_id: int, conn: sqlite3.Connection = Conn):
+    """La geografía: rejilla de biomas, ríos, calzadas y picos con nombre.
+
+    Va aparte del mapa porque no cambia con el año: se pide una vez, se dibuja
+    una vez y el deslizador solo repinta lo que sí cambia (los sitios y quién
+    los posee).
+    """
+    from ..model import terreno as modelo
+
+    get_export(conn, export_id)
+    return modelo.terreno(conn, export_id)
+
+
 @router.get("/exports/{export_id}/sitios/{site_id}")
 def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
                 conn: sqlite3.Connection = Conn):
