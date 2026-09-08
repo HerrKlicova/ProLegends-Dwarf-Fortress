@@ -304,16 +304,52 @@ previo ya dice cuánto va a costar; habrá que vigilar que no se dispare.
 
 ---
 
+## v1.9.0 — Los sucesos, no solo los eventos
+
+> Una batalla no es una línea de una tabla.
+
+Dwarf Fortress agrupa los eventos en **sucesos**: batallas, guerras, saqueos,
+duelos, secuestros, robos, ataques de bestias, insurrecciones, purgas,
+persecuciones, viajes, celebraciones, ceremonias, competiciones, actuaciones,
+procesiones y golpes de estado.
+
+Eso ya lo importamos a las tablas `event_collections` y `collection_events`, y
+el endpoint `/exports/{id}/colecciones` funciona. Falta la parte que se ve:
+ficha de cada suceso con sus dos bandos, su vencedor, sus bajas, sus
+participantes y los eventos que lo componen, todo enlazado.
+
+**Tamaño.** Medio. No hay que tocar el parser ni reimportar.
+
+---
+
+## v2.0.0 — Récords del mundo y árboles genealógicos
+
+> Lo que hace que un mundo apetezca explorar.
+
+- **Récords**: mayores asesinos, batallas más sangrientas, reinados más largos y
+  más cortos, sitios más disputados, imperios más grandes, mayores eruditos,
+  autores más prolíficos, los más viejos vivos, los más viajados, artefactos más
+  antiguos, ríos más largos, picos más altos, regiones más sangrientas. Con
+  titulares arriba.
+- **Árbol genealógico** de cualquier figura, dibujado con canvas (nada de
+  librerías con compilación), a partir de la tabla `hf_links` que ya tenemos.
+
+**Tamaño.** Grande, pero todo son consultas sobre lo que ya está guardado.
+
+---
+
 ## Ideas aparcadas
 
 No están descartadas, pero no compiten con lo de arriba:
 
-- Grafo de relaciones entre personas.
 - Grafo de transmisión de secretos: quién enseñó nigromancia a quién.
 - Red de conspiraciones a partir de los `intrigue_plot`.
 - Línea temporal navegable como vista propia.
 - Comparar dos mundos entre sí.
 - Modo presentación, para enseñar la historia de un mundo a alguien.
+- Leer el tercer fichero de DF, `world_sites_and_pops.txt`, con las poblaciones
+  por sitio y los cargos oficiales.
+- Mapa de las cavernas y el inframundo, y capa de regiones malditas.
 
 ---
 
@@ -329,3 +365,13 @@ No están descartadas, pero no compiten con lo de arriba:
   casualidad.
 - **Cada bloque se sube funcionando**, con su versión y su resumen. Nada de
   ramas a medias colgando durante semanas.
+
+---
+
+## De dónde salen algunas de estas ideas
+
+En `docs/referencia-legendsviewer.md` está el análisis del código de
+[LegendsViewer-Next](https://github.com/Kromtec/LegendsViewer-Next), que hace
+algo parecido y lleva años de ventaja. De ahí salen las versiones 1.9.0 y 2.0.0
+y buena parte del alcance de la 1.5.0. También dice qué **no** copiarle y qué
+cosas hacemos ya mejor, para no perderlas por el camino.
