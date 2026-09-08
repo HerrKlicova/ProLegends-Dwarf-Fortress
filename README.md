@@ -363,10 +363,13 @@ tamaño del mundo ya están en `exports`).
 
 ## Comandos sueltos
 
-No hacen falta para el uso normal, pero están:
+No hacen falta para el uso normal —**todo lo importante está en la interfaz**—
+pero están. En Windows se ejecutan con `venv\Scripts\python` desde la carpeta
+del programa; en macOS y Linux, con `venv/bin/python`:
 
 ```
 python -m app.cli geografia       vuelca qué traen los XML sobre el mapa
+                                  (o el botón "¿El mapa no cuadra?" del mapa)
 python -m app.cli juego           busca Dwarf Fortress y enseña sus exports
 python -m app.cli juego --traer   copia a tu carpeta de exports los que falten
 python -m app.cli diagnostico     dice qué ve la aplicación en cada fichero

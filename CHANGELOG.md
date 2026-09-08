@@ -10,6 +10,28 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.4.3 — El informe del mapa, sin tocar la terminal
+
+*Comodidad.*
+
+**Añadido**
+
+- **Botón «¿El mapa no cuadra?»** en el panel del terreno, debajo de la leyenda.
+  Hace lo mismo que `python -m app.cli geografia` pero sin salir de la
+  aplicación: abre una ventana con lo que trae tu export sobre el mapa, tal y
+  como viene, lista para copiar y pegar. También lo deja guardado en un fichero
+  de texto en tu carpeta personal.
+- Si los XML ya no están en su carpeta (por ejemplo si miras desde otro
+  ordenador), **el informe se saca de la base de datos** en vez de rendirse. Se
+  indica de dónde ha salido.
+
+**Detalle**
+
+- Las ventanas que solo informan ya no enseñan un botón de «Cancelar» que no
+  cancelaba nada.
+
+---
+
 ## v1.4.2 — Más frondoso, y una herramienta para dejar de adivinar
 
 *Mejoras del mapa y un comando nuevo.*

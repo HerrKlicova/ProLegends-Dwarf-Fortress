@@ -65,7 +65,7 @@ const UI = (() => {
   }
 
   /* Ventana modal con promesa: resuelve true si se acepta. */
-  function confirmar(titulo, cuerpo, textoAceptar = 'Aceptar') {
+  function confirmar(titulo, cuerpo, textoAceptar = 'Aceptar', conCancelar = true) {
     return new Promise((resolver) => {
       const modal = document.getElementById('modal');
       document.getElementById('modal-titulo').textContent = titulo;
@@ -73,6 +73,8 @@ const UI = (() => {
       const aceptar = document.getElementById('modal-aceptar');
       const cancelar = document.getElementById('modal-cancelar');
       aceptar.textContent = textoAceptar;
+      // Una ventana que solo informa no necesita un boton de cancelar.
+      cancelar.classList.toggle('oculto', !conCancelar);
       const cerrar = (valor) => {
         modal.classList.add('oculto');
         aceptar.onclick = null; cancelar.onclick = null;

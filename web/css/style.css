@@ -205,6 +205,10 @@ pre.consola { background: #0d0c0a; border: 1px solid var(--borde); border-radius
 .modal-caja .bloque { margin-top: 1.1rem; }
 .modal-caja .scroll { max-height: 260px; }
 .ruta-mostrada { word-break: break-all; font-size: .82rem; margin: .3rem 0; }
+.volcado { width: 100%; height: 320px; background: var(--fondo-3); color: var(--texto);
+  border: 1px solid var(--borde); border-radius: 4px; padding: .5rem;
+  font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: .72rem;
+  line-height: 1.45; white-space: pre; resize: vertical; }
 .botonera { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; align-items: center; }
 input.ruta { flex: 1; min-width: 0; background: var(--fondo-3); color: var(--texto);
   border: 1px solid var(--borde); border-radius: 4px; padding: .3rem .45rem;

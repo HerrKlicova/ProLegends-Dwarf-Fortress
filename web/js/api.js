@@ -57,6 +57,7 @@ const API = (() => {
     export:        (id)               => get(`/api/exports/${id}`),
     mapa:          (id)               => get(`/api/exports/${id}/mapa`),
     terreno:       (id)               => get(`/api/exports/${id}/terreno`),
+    geografia:     (id)               => get(`/api/exports/${id}/geografia`),
     sitio:         (id, sid)          => get(`/api/exports/${id}/sitios/${sid}`),
     entidad:       (id, eid)          => get(`/api/exports/${id}/entidades/${eid}`),
     figuras:       (id, q)            => get(`/api/exports/${id}/figuras?${q}`),

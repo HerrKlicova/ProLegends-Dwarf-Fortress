@@ -194,6 +194,51 @@ def terreno_del_mundo(export_id: int, conn: sqlite3.Connection = Conn):
     return modelo.terreno(conn, export_id)
 
 
+@router.get("/exports/{export_id}/geografia")
+def informe_geografia(export_id: int, conn: sqlite3.Connection = Conn):
+    """Qué trae este export sobre el mapa, tal y como viene.
+
+    Sirve para resolver dudas del mapa sin suponer nada: se mira el dato en vez
+    de imaginárselo. Se prefieren los XML, que es la fuente; si ya no están a
+    mano se saca de la base de datos, que dice lo mismo con otras palabras.
+    """
+    from pathlib import Path
+
+    from .. import config
+    from ..parser.discover import discover
+    from ..parser.inspeccion import informe, informe_bd
+
+    exp = get_export(conn, export_id)
+
+    texto = ""
+    origen = ""
+    try:
+        pares, _ = discover(config.IMPORTS_DIR)
+        par = next((p for p in pares if p.prefix == exp["prefix"]), None)
+        if par is not None:
+            rutas = [r for r in (par.main, par.plus) if r and Path(r).exists()]
+            if rutas:
+                texto = informe(rutas)
+                origen = "los ficheros XML"
+    except Exception:  # pragma: no cover - si falla, queda la base de datos
+        texto = ""
+
+    if not texto:
+        texto = informe_bd(conn, export_id)
+        origen = "la base de datos (los XML ya no estaban en su carpeta)"
+
+    fichero = ""
+    try:
+        config.ensure_dirs()
+        destino = config.DATA_DIR / f"geografia-{exp['prefix']}.txt"
+        destino.write_text(texto, encoding="utf-8")
+        fichero = str(destino)
+    except OSError:
+        pass
+
+    return {"texto": texto, "origen": origen, "fichero": fichero}
+
+
 @router.get("/exports/{export_id}/sitios/{site_id}")
 def ficha_sitio(export_id: int, site_id: int, limite_eventos: int = 400,
                 conn: sqlite3.Connection = Conn):

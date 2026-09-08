@@ -153,14 +153,44 @@ const Mapa = (() => {
       return;
     }
     const total = lista.reduce((n, t) => n + t.casillas, 0) || 1;
-    UI.poner(caja, ...lista.map((t) => UI.el('div', { class: 'fila' }, [
-      UI.el('span', { class: 'pastilla', style: `background:${t.color}` }),
-      UI.el('span', { class: 'nombre-faccion' }, [
-        UI.el('span', { class: 'linea1', text: t.nombre }),
-        t.conocido ? null : UI.el('span', { class: 'linea2', text: 'sin dibujo propio' }),
-      ]),
-      UI.el('span', { class: 'conteo', text: `${Math.round(t.casillas * 100 / total)}%` }),
-    ])));
+    UI.poner(caja,
+      ...lista.map((t) => UI.el('div', { class: 'fila' }, [
+        UI.el('span', { class: 'pastilla', style: `background:${t.color}` }),
+        UI.el('span', { class: 'nombre-faccion' }, [
+          UI.el('span', { class: 'linea1', text: t.nombre }),
+          t.conocido ? null : UI.el('span', { class: 'linea2', text: 'sin dibujo propio' }),
+        ]),
+        UI.el('span', { class: 'conteo', text: `${Math.round(t.casillas * 100 / total)}%` }),
+      ])),
+      UI.el('button', { class: 'boton pequeno ancho', text: '¿El mapa no cuadra?',
+                        title: 'Enseña qué trae tu export sobre el mapa, tal cual viene',
+                        onclick: informeGeografia }));
+  }
+
+  /* Qué trae este export sobre el mapa, tal y como viene. Sirve para resolver
+     dudas del mapa mirando el dato en vez de suponerlo. */
+  async function informeGeografia() {
+    let datos;
+    try { datos = await API.geografia(App.exportId()); }
+    catch (e) { UI.fallo(e); return; }
+
+    const area = UI.el('textarea', { class: 'volcado', readonly: 'readonly' });
+    area.value = datos.texto || '(vacío)';
+    await UI.confirmar('Qué trae tu export sobre el mapa', [
+      UI.el('p', { class: 'nota', text:
+        `Sacado de ${datos.origen}. Esto es lo que hay de verdad en tus ficheros: ` +
+        'sirve para arreglar el mapa mirando el dato en vez de suponerlo.' }),
+      area,
+      datos.fichero
+        ? UI.el('p', { class: 'nota', text: `Guardado también en: ${datos.fichero}` })
+        : null,
+      UI.el('p', { class: 'nota', text:
+        'No lleva nada personal: son nombres de sitios y coordenadas. Se puede compartir.' }),
+      UI.el('button', { class: 'boton pequeno', text: 'Copiar todo', onclick: () => {
+        area.select();
+        try { document.execCommand('copy'); } catch (e) { /* el usuario copiará a mano */ }
+      } }),
+    ], 'Cerrar', false);
   }
 
   function pintarLeyenda() {
