@@ -10,6 +10,43 @@ La numeración es `MAYOR.MENOR.PARCHE`:
 
 ---
 
+## v1.4.1 — Los ríos dejan de cruzar el mundo de punta a punta
+
+*Arreglo del mapa, encontrado en cuanto se probó con un mundo de verdad.*
+
+**Arreglado**
+
+- **Los ríos y las calzadas salían como un abanico de rayas** que atravesaba el
+  mapa entero. El motivo: yo daba por hecho que las casillas de un río venían
+  en el orden en que se recorre, y en los exports reales **no** es así — vienen
+  como "las casillas que ocupa esto", ordenadas por filas. Unirlas por orden de
+  lista trazaba una raya en cada salto. En mi mundo de pruebas el río sí era un
+  recorrido ordenado, y por eso no se veía.
+- Ahora **se reconstruye la red**: se mira qué casillas se tocan y se siguen las
+  cadenas. Lo que no se toca, no se une. Funciona igual si el export las trae
+  ordenadas que si las trae por filas.
+- **Lo que cae fuera del mundo se descarta** en lugar de dibujarse fuera del
+  marco.
+- **Los sellos de los sitios se pisaban unos a otros** en un mundo poblado.
+  Ahora caben en su casilla, con el halo más fino.
+- **Los nombres salían amontonados e ilegibles.** Ahora solo aparecen cuando de
+  verdad hay sitio para leerlos; por debajo de eso, hay que acercarse.
+
+**Añadido**
+
+- **Leyenda del terreno** en el panel de la izquierda: qué biomas hay en tu
+  mundo, con qué color se ha pintado cada uno y qué porcentaje ocupa.
+- Si aparece un tipo de terreno que todavía no tiene dibujo propio, **se dice**
+  debajo del mapa y se pinta liso, en vez de disfrazarlo de otra cosa.
+- La autocomprobación ahora prueba también el dibujo del mapa (con `node`, si
+  lo tienes instalado): que un río desordenado se reconstruya, que dos tramos
+  separados no se unan, que ningún tramo salte más de una casilla y que lo de
+  fuera del mundo se descarte. El export de prueba escribe ahora los ríos por
+  filas, como los de verdad, para no volver a probar contra un caso más fácil
+  que el real.
+
+---
+
 ## v1.4.0 — El mapa, dibujado con tus datos
 
 *La grande. El mapa deja de ser una cuadrícula de puntos.*

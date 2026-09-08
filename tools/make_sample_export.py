@@ -541,14 +541,20 @@ def recortar(mundo, args, anyo: int, con_fortaleza: bool):
 
     p.append("<rivers>")
     for i, rio in enumerate(mundo["geo"]["rios"]):
-        camino = "|".join(f"{x},{y}" for x, y in rio["camino"])
+        # A proposito NO se escriben en el orden en que se recorre el rio: en
+        # los exports reales esto es "las casillas que ocupa", ordenadas por
+        # filas. Quien lo dibuje tiene que reconstruir la red, no fiarse del
+        # orden de la lista.
+        camino = "|".join(f"{x},{y}" for x, y in sorted(rio["camino"],
+                                                        key=lambda c: (c[1], c[0])))
         p.append(f"<river><name>the river of {rio['nombre']}</name>"
                  f"<path>{camino}</path></river>")
     p.append("</rivers>")
 
     p.append("<world_constructions>")
     for c in mundo["construcciones"]:
-        coords = "|".join(f"{x},{y}" for x, y in c["camino"])
+        coords = "|".join(f"{x},{y}" for x, y in sorted(c["camino"],
+                                                        key=lambda p: (p[1], p[0])))
         p.append(f"<world_construction><id>{c['id']}</id><name>{c['nombre']}</name>"
                  f"<type>{c['tipo']}</type><coords>{coords}</coords></world_construction>")
     p.append("</world_constructions>")

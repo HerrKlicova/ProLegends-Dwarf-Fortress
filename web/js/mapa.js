@@ -68,6 +68,7 @@ const Mapa = (() => {
     vista = { escala: 1, x: 0, y: 0 };
 
     pintarCapas();
+    pintarTerreno();
     pintarLeyenda();
     UI.poner(document.getElementById('panel-sitio'),
       UI.el('p', { class: 'vacio', text: 'Pincha en un sitio del mapa para ver su ficha.' }));
@@ -115,6 +116,29 @@ const Mapa = (() => {
       }),
       UI.el('span', { class: 'pastilla', style: `background:${c.color}` }),
       UI.el('span', { text: c.nombre }),
+    ])));
+  }
+
+  /* Qué terreno hay en este mundo y con qué color se ha pintado. Los nombres
+     son los que trae el export, sin traducir ni maquillar. */
+  function pintarTerreno() {
+    const caja = document.getElementById('leyenda-terreno');
+    if (!caja) return;
+    const lista = Atlas.hayMapa() ? Atlas.terrenos() : [];
+    if (!lista.length) {
+      UI.poner(caja, UI.el('p', { class: 'nota', text: Atlas.hayMapa()
+        ? 'Sin terreno reconocible.'
+        : 'Este export no trae la geografía del mundo.' }));
+      return;
+    }
+    const total = lista.reduce((n, t) => n + t.casillas, 0) || 1;
+    UI.poner(caja, ...lista.map((t) => UI.el('div', { class: 'fila' }, [
+      UI.el('span', { class: 'pastilla', style: `background:${t.color}` }),
+      UI.el('span', { class: 'nombre-faccion' }, [
+        UI.el('span', { class: 'linea1', text: t.nombre }),
+        t.conocido ? null : UI.el('span', { class: 'linea2', text: 'sin dibujo propio' }),
+      ]),
+      UI.el('span', { class: 'conteo', text: `${Math.round(t.casillas * 100 / total)}%` }),
     ])));
   }
 
@@ -197,8 +221,10 @@ const Mapa = (() => {
     }
 
     // Sobre pergamino los sellos van algo mas discretos: manda el mapa.
+    // El sello tiene que caber en su casilla: si no, con un mundo poblado se
+    // pisan unos a otros y no se ve el mapa que hay debajo.
     const tam = Atlas.hayMapa()
-      ? Math.max(4, Math.min(celda * 0.85, 24))
+      ? Math.max(4, Math.min(celda * 0.72, 20))
       : Math.max(4, Math.min(celda * 1.6, 13));
     posiciones = [];
 
@@ -272,6 +298,9 @@ const Mapa = (() => {
       (vista.escala > 1.01 ? `  ·  ampliado ${vista.escala.toFixed(1)}x` : '') +
       (Atlas.hayMapa()
         ? '  ·  rueda para acercar, arrastra para mover, doble clic para encajarlo.'
+          + (Atlas.desconocidos().length
+              ? `  ·  sin dibujo propio todavía: ${Atlas.desconocidos().join(', ')}`
+              : '')
         : '  ·  ' + (Atlas.motivo() || ''));
     const nBestias = posiciones.filter((p) => p.tipo === 'bestia').length;
     document.getElementById('nota-bestias').textContent = datos.bestias.length
@@ -325,8 +354,10 @@ const Mapa = (() => {
   /* Nombres sobre el mapa. Aparecen segun se amplia y se apartan entre ellos:
      mas vale no poner una etiqueta que amontonarlas y no leer ninguna. */
   function etiquetas(ctx, celda) {
-    if (celda < 13) return;
-    const cuerpo = Math.max(9, Math.min(celda * 0.42, 15));
+    // Hace falta sitio de verdad para que un nombre se lea. Por debajo de esto
+    // saldrian amontonados y no se entenderia ninguno: mejor acercarse.
+    if (celda < 22) return;
+    const cuerpo = Math.max(10, Math.min(celda * 0.34, 15));
     ctx.font = `${cuerpo}px Georgia, "Times New Roman", serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
@@ -416,7 +447,7 @@ const Mapa = (() => {
       // Una ruina es una silueta rota: dos muros de pie y nada mas.
       if (papel) {
         ctx.strokeStyle = 'rgba(233,220,190,.9)';
-        ctx.lineWidth = Math.max(2.5, tam * 0.45);
+        ctx.lineWidth = Math.max(2, tam * 0.3);
         muro(ctx, cx, cy, tam); ctx.stroke();
       }
       ctx.strokeStyle = papel ? '#5b5048' : 'rgba(255,255,255,.45)';
@@ -427,7 +458,7 @@ const Mapa = (() => {
 
     if (papel) {
       ctx.strokeStyle = 'rgba(233,220,190,.92)';
-      ctx.lineWidth = Math.max(2.5, tam * 0.5);
+      ctx.lineWidth = Math.max(2, tam * 0.3);
       ctx.lineJoin = 'round';
       trazo(ctx, capa, cx, cy, tam); ctx.stroke();
     }

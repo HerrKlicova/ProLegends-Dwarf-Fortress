@@ -9,6 +9,8 @@
 const Atlas = (() => {
 
   /* Paleta de atlas: tintas y tierras sobre papel, no colores de pantalla. */
+  const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
   const PAPEL       = '#e9dcbe';
   const PAPEL_OSCURO= '#dccca6';
   const TINTA       = '#4a3b28';
@@ -59,11 +61,32 @@ const Atlas = (() => {
     const n = String(nombre || '').toLowerCase();
     for (const b of BIOMAS) {
       if (n.includes(b.clave)) {
-        return { agua: b.motivo === 'agua', color: b.color, motivo: b.motivo, nombre };
+        return { agua: b.motivo === 'agua', color: b.color, motivo: b.motivo,
+                 nombre, conocido: true };
       }
     }
-    return { agua: false, color: TIERRA_DESCONOCIDA.color, motivo: null, nombre };
+    // No se inventa un dibujo para un terreno que no se sabe qué es: se pinta
+    // liso y se dice, que es mejor que fingir que es un bosque.
+    return { agua: false, color: TIERRA_DESCONOCIDA.color, motivo: null,
+             nombre, conocido: false };
   }
+
+  /* Qué terrenos hay en este mundo y con qué color se han pintado, para poder
+     poner una leyenda de verdad al lado del mapa. */
+  function terrenos() {
+    if (!datos) return [];
+    const cuenta = new Map();
+    for (const c of datos.rejilla) {
+      if (c === '.') continue;
+      const i = ALFABETO.indexOf(c);
+      if (i >= 0) cuenta.set(i, (cuenta.get(i) || 0) + 1);
+    }
+    return [...cuenta.entries()]
+      .map(([i, n]) => ({ ...clasificado[i], casillas: n }))
+      .sort((a, b) => b.casillas - a.casillas);
+  }
+
+  const desconocidos = () => terrenos().filter((t) => !t.conocido).map((t) => t.nombre);
 
   const hayMapa = () => !!datos;
   const info = () => datos;
@@ -90,10 +113,8 @@ const Atlas = (() => {
 
   function indice(x, y) {
     const i = y * datos.ancho + x;
-    const c = datos.rejilla.charCodeAt(i);
-    if (!c || datos.rejilla[i] === '.') return -1;
-    const ALF = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-    return ALF.indexOf(datos.rejilla[i]);
+    if (datos.rejilla[i] === '.' || datos.rejilla[i] === undefined) return -1;
+    return ALFABETO.indexOf(datos.rejilla[i]);
   }
 
   function dibujarTerreno(ctx, anchoPx, altoPx, geom) {
@@ -432,6 +453,62 @@ const Atlas = (() => {
     return p;
   }
 
+  /* Las casillas de un río o de una calzada NO vienen necesariamente en el
+     orden en que se recorren: en los exports reales son "las casillas que
+     ocupa esto", y punto. Unirlas por orden de lista traza rayas de un extremo
+     al otro del mundo. Así que se reconstruye la red: se mira qué casillas se
+     tocan y se siguen las cadenas. Lo que no se toca, no se une. */
+  function cadenas(puntos, ancho, alto) {
+    const dentro = puntos.filter(([x, y]) =>
+      x >= 0 && y >= 0 && x < ancho && y < alto);
+    if (dentro.length < 2) return [];
+
+    const clave = (x, y) => y * ancho + x;
+    const casillas = new Map();
+    for (const [x, y] of dentro) casillas.set(clave(x, y), [x, y]);
+
+    const vecinas = (x, y) => {
+      const salida = [];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1],
+                              [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const k = clave(x + dx, y + dy);
+        if (casillas.has(k)) salida.push(k);
+      }
+      return salida;
+    };
+
+    // Se empieza por los extremos (una sola vecina) para que las cadenas
+    // salgan enteras; lo que quede en medio, después.
+    const grado = new Map();
+    for (const [k, [x, y]] of casillas) grado.set(k, vecinas(x, y).length);
+    const pendientes = [...casillas.keys()].sort(
+      (a, b) => (grado.get(a) || 0) - (grado.get(b) || 0));
+
+    const usadas = new Set();
+    const salida = [];
+    for (const inicio of pendientes) {
+      if (usadas.has(inicio)) continue;
+      let actual = inicio;
+      const cadena = [];
+      while (actual !== undefined && !usadas.has(actual)) {
+        usadas.add(actual);
+        cadena.push(casillas.get(actual));
+        const [x, y] = casillas.get(actual);
+        // Se sigue por la vecina menos conectada que quede libre: así se
+        // recorren primero los brazos y no se dan saltos raros.
+        let siguiente, mejor = Infinity;
+        for (const k of vecinas(x, y)) {
+          if (usadas.has(k)) continue;
+          const g = grado.get(k) || 0;
+          if (g < mejor) { mejor = g; siguiente = k; }
+        }
+        actual = siguiente;
+      }
+      if (cadena.length >= 2) salida.push(cadena);
+    }
+    return salida;
+  }
+
   function suave(ctx, camino, px, py, vueltas = 2) {
     if (camino.length < 2) return;
     const recto = limpiar(camino);
@@ -453,7 +530,9 @@ const Atlas = (() => {
       // Los ríos largos son los caudalosos: se dibujan más gruesos.
       const grosor = pluma * (rio.camino.length > 40 ? 0.22 : 0.15);
       ctx.lineWidth = Math.max(0.9, grosor);
-      suave(ctx, rio.camino, px, py);
+      for (const tramo of cadenas(rio.camino, datos.ancho, datos.alto)) {
+        suave(ctx, tramo, px, py);
+      }
     }
   }
 
@@ -468,7 +547,9 @@ const Atlas = (() => {
       ctx.setLineDash(tipo === 'tunnel' ? [pluma * 0.25, pluma * 0.35]
                     : tipo === 'bridge' ? [pluma * 0.7, pluma * 0.25]
                     : [pluma * 0.55, pluma * 0.4]);
-      suave(ctx, c.camino, px, py);
+      for (const tramo of cadenas(c.camino, datos.ancho, datos.alto)) {
+        suave(ctx, tramo, px, py);
+      }
     }
     ctx.setLineDash([]);
   }
@@ -575,6 +656,8 @@ const Atlas = (() => {
 
   const motivo_ = () => porQueNo;
 
-  return { preparar, capa, hayMapa, info, motivo: motivo_,
+  return { preparar, capa, hayMapa, info, motivo: motivo_, terrenos, desconocidos,
+           cadenas,   // expuesto para la autocomprobación
+
            PAPEL, PAPEL_OSCURO, TINTA };
 })();

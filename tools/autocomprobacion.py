@@ -679,6 +679,78 @@ def main() -> int:
         conn7.close()
         conn8.close()
 
+        # El dibujo del mapa vive en JavaScript, y ahi estaba el fallo que se
+        # vio con un mundo real: los rios no vienen como un recorrido ordenado
+        # sino como "las casillas que ocupa esto". Unirlas por orden de lista
+        # trazaba rayas de punta a punta del mundo. Se comprueba con node si
+        # esta instalado; si no, se dice y se sigue.
+        guion = """
+global.document = { createElement: () => ({ getContext: () => ({}) }) };
+%s
+const salida = [];
+const di = (ok, txt) => salida.push((ok ? 'OK|' : 'NO|') + txt);
+
+// 1) Un rio dado como conjunto desordenado de casillas contiguas: una cadena.
+const sueltas = [[5,3],[3,1],[4,2],[5,4],[6,4],[3,0],[4,1]];
+const c1 = Atlas.cadenas(sueltas, 30, 30);
+di(c1.length === 1 && c1[0].length === sueltas.length,
+   'un rio desordenado se reconstruye como una sola cadena');
+
+// 2) Nada de unir lo que no se toca: dos brazos separados, dos cadenas.
+const dos = [[1,1],[2,1],[3,1],[20,20],[21,20],[22,20]];
+const c2 = Atlas.cadenas(dos, 30, 30);
+di(c2.length === 2, 'dos tramos separados NO se unen con una raya (' + c2.length + ')');
+
+// 3) Cada salto de una cadena es a una casilla pegada: sin rayas largas.
+let maximo = 0;
+for (const cadena of c1.concat(c2)) {
+  for (let i = 1; i < cadena.length; i++) {
+    maximo = Math.max(maximo,
+      Math.abs(cadena[i][0]-cadena[i-1][0]), Math.abs(cadena[i][1]-cadena[i-1][1]));
+  }
+}
+di(maximo <= 1, 'ningun tramo salta mas de una casilla (maximo ' + maximo + ')');
+
+// 4) Lo que cae fuera del mundo se descarta en vez de salirse del marco.
+const fuera = Atlas.cadenas([[1,1],[2,1],[999,999],[-4,7]], 30, 30);
+di(fuera.length === 1 && fuera[0].length === 2,
+   'las coordenadas fuera del mundo se descartan');
+
+// 5) Un recorrido ya ordenado sigue saliendo entero.
+const recto = [];
+for (let i = 0; i < 12; i++) recto.push([i, 5]);
+const c5 = Atlas.cadenas(recto, 30, 30);
+di(c5.length === 1 && c5[0].length === 12, 'un recorrido ya ordenado sale entero');
+
+console.log(salida.join('\\n'));
+""" % (RAIZ / "web" / "js" / "atlas.js").read_text(encoding="utf-8")
+
+        try:
+            hecho = subprocess.run(["node", "-e", guion], capture_output=True,
+                                   text=True, timeout=60)
+            if hecho.returncode != 0:
+                comprobar(False, f"el dibujo del mapa no se ha podido comprobar: {hecho.stderr[:200]}")
+            else:
+                for linea in hecho.stdout.strip().splitlines():
+                    estado, _, texto = linea.partition("|")
+                    comprobar(estado == "OK", texto)
+        except (OSError, subprocess.SubprocessError):
+            print("  [  --  ] sin node instalado: no se comprueba el dibujo del mapa")
+
+        # Y el generador tiene que producir esa misma forma, o la proxima vez
+        # volveriamos a probar contra un caso mas facil que el real.
+        import json as _json  # noqa: E402
+
+        crudo = dbmod.one(
+            conn7 if False else dbmod.connect(tmp / "geo.db"),
+            "SELECT data_json FROM raw_records WHERE section = 'rivers' LIMIT 1",
+        )
+        if crudo:
+            puntos = terr.parse_coords(_json.loads(crudo["data_json"]).get("path"))
+            comprobar(len(puntos) > 2 and puntos == sorted(puntos, key=lambda c: (c[1], c[0])),
+                      "el export de prueba escribe los ríos por filas y no en el orden en "
+                      "que se recorren, que es como vienen los de verdad")
+
         conn.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
