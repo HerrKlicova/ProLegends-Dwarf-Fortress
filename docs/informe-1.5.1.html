@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>ProLegends — Informe de estado</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 16mm 16mm; }
+  @page :first { margin-top: 0; }
+
+  :root {
+    --tinta: #23201c;
+    --suave: #6b6257;
+    --linea: #d8d0c2;
+    --acento: #7a4a1f;
+    --fondo-caja: #faf7f0;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: "DejaVu Serif", Georgia, "Times New Roman", serif;
+    color: var(--tinta);
+    font-size: 10.2pt;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* ---------------------------------------------------------- portada */
+  .portada {
+    height: 297mm;
+    margin: 0 -16mm;
+    padding: 60mm 22mm 20mm;
+    background: linear-gradient(160deg, #2b2620 0%, #443a2c 55%, #5c4a30 100%);
+    color: #f4ece0;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+  }
+  .portada .sello {
+    font-size: 8.5pt; letter-spacing: .28em; text-transform: uppercase;
+    color: #c9ab7d; margin-bottom: 14mm;
+  }
+  .portada h1 { font-size: 34pt; margin: 0 0 4mm; line-height: 1.08; font-weight: 400; }
+  .portada .sub { font-size: 13pt; color: #d6c6ad; margin: 0 0 16mm; font-style: italic; }
+  .portada .meta { margin-top: auto; font-size: 9.5pt; color: #bfae94; line-height: 1.9; }
+  .portada .meta b { color: #f4ece0; font-weight: 600; }
+  .portada .regla { width: 26mm; height: 2px; background: #c9ab7d; margin: 0 0 8mm; }
+
+  /* ---------------------------------------------------------- textos */
+  h2 {
+    font-size: 15pt; font-weight: 400; margin: 11mm 0 3mm;
+    padding-bottom: 1.6mm; border-bottom: 1.5px solid var(--acento);
+    color: var(--acento); page-break-after: avoid;
+  }
+  h2 .n { color: var(--suave); font-size: 11pt; margin-right: 3mm; }
+  h3 {
+    font-size: 11pt; font-weight: 700; margin: 6mm 0 1.5mm;
+    color: var(--tinta); page-break-after: avoid;
+  }
+  h4 { font-size: 10pt; margin: 4mm 0 1mm; color: var(--suave); page-break-after: avoid; }
+  p { margin: 0 0 2.6mm; text-align: justify; }
+  ul, ol { margin: 0 0 3mm; padding-left: 5.5mm; }
+  li { margin-bottom: 1.2mm; }
+  code {
+    font-family: "DejaVu Sans Mono", Consolas, monospace;
+    font-size: 8.6pt; background: #f0ece2; padding: 0 1mm; border-radius: 2px;
+  }
+  strong { font-weight: 700; }
+  .suave { color: var(--suave); }
+
+  /* ---------------------------------------------------------- cajas */
+  .caja {
+    background: var(--fondo-caja); border-left: 3px solid var(--acento);
+    padding: 3mm 4mm; margin: 3mm 0 4mm; page-break-inside: avoid;
+  }
+  .caja p:last-child { margin-bottom: 0; }
+  .caja .titulo {
+    font-size: 8pt; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--acento); margin-bottom: 1.5mm; font-weight: 700;
+  }
+  blockquote {
+    margin: 3mm 0; padding: 0 0 0 4mm; border-left: 2px solid var(--linea);
+    font-style: italic; color: var(--suave);
+  }
+
+  /* ---------------------------------------------------------- tablas */
+  table {
+    width: 100%; border-collapse: collapse; margin: 2mm 0 4mm;
+    font-size: 9pt; page-break-inside: avoid;
+  }
+  th {
+    text-align: left; border-bottom: 1.2px solid var(--acento);
+    padding: 1.4mm 2mm; font-size: 8.2pt; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--acento); font-weight: 700;
+  }
+  td { padding: 1.4mm 2mm; border-bottom: .5px solid var(--linea); vertical-align: top; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.total td { font-weight: 700; border-top: 1.2px solid var(--acento); border-bottom: none; }
+
+  /* ---------------------------------------------------------- fichas */
+  .rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 5mm; margin: 2mm 0 4mm; }
+  .dato {
+    border: .8px solid var(--linea); padding: 2.5mm 3mm; page-break-inside: avoid;
+  }
+  .dato .cifra { font-size: 17pt; color: var(--acento); line-height: 1; }
+  .dato .etiqueta { font-size: 8.2pt; color: var(--suave); margin-top: 1mm; }
+
+  .estado { display: inline-block; font-size: 7.6pt; padding: .3mm 1.6mm;
+            border-radius: 2px; letter-spacing: .06em; text-transform: uppercase;
+            font-weight: 700; vertical-align: 1px; }
+  .ok    { background: #dfe8d5; color: #40602c; }
+  .duda  { background: #f5e4c8; color: #8a5b16; }
+  .no    { background: #ecdcd8; color: #8a3524; }
+
+  .salto { page-break-before: always; }
+  .fin { margin-top: 8mm; padding-top: 3mm; border-top: 1px solid var(--linea);
+         font-size: 8.5pt; color: var(--suave); text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ PORTADA -->
+<div class="portada">
+  <div class="sello">Informe de estado del proyecto</div>
+  <div class="regla"></div>
+  <h1>ProLegends</h1>
+  <p class="sub">Explorador local del archivo de leyendas de Dwarf Fortress</p>
+  <p style="color:#d6c6ad; max-width: 118mm; line-height:1.7; font-size:10.5pt;">
+    Repaso completo de lo construido hasta la versión 1.5.1: qué hace cada
+    fichero, qué decisiones se tomaron y por qué, qué está comprobado, qué
+    sigue abierto y por dónde continúa el trabajo.
+  </p>
+  <div class="meta">
+    <b>Versión revisada</b> &nbsp;1.5.1<br>
+    <b>Repositorio</b> &nbsp;HerrKlicova/ProLegends-Dwarf-Fortress · rama <code style="background:none;color:#f4ece0">main</code><br>
+    <b>Commits</b> &nbsp;34 · <b>Versiones publicadas</b> &nbsp;18<br>
+    <b>Fecha</b> &nbsp;10 de septiembre de 2026
+  </div>
+</div>
+
+<!-- ============================================================ 1 -->
+<h2><span class="n">1</span>En una página</h2>
+
+<p>ProLegends lee los dos ficheros que Dwarf Fortress escribe cuando exportas las
+leyendas de un mundo —<code>legends.xml</code> y <code>legends_plus.xml</code>,
+entre 20 y 60 MB— y los convierte en algo que se puede recorrer: un mapa del
+mundo dibujado a partir de los datos, fichas de personajes y de sitios, un panel
+de tu fortaleza, y crónicas narradas por IA cuando tú las pides.</p>
+
+<p>Se arranca con doble clic. No hay servidor en internet, no hay cuenta, no hay
+nada que instalar más allá de Python. Todo ocurre en tu ordenador y todo está en
+castellano.</p>
+
+<div class="rejilla">
+  <div class="dato"><div class="cifra">16.355</div><div class="etiqueta">líneas de código y documentación</div></div>
+  <div class="dato"><div class="cifra">54</div><div class="etiqueta">ficheros de código</div></div>
+  <div class="dato"><div class="cifra">29</div><div class="etiqueta">tablas en la base de datos</div></div>
+  <div class="dato"><div class="cifra">31</div><div class="etiqueta">endpoints de la API interna</div></div>
+  <div class="dato"><div class="cifra">155</div><div class="etiqueta">plantillas de narración de sucesos</div></div>
+  <div class="dato"><div class="cifra">557</div><div class="etiqueta">términos traducidos de DF a castellano</div></div>
+</div>
+
+<table>
+  <tr><th>Bloque</th><th>Ficheros</th><th>Líneas</th><th>Qué es</th></tr>
+  <tr><td>Backend <code>app/</code></td><td class="num">37</td><td class="num">9.713</td><td>Lectura del XML, base de datos, API interna, narrador, IA</td></tr>
+  <tr><td>Interfaz <code>web/</code></td><td class="num">11</td><td class="num">3.314</td><td>HTML, CSS y JavaScript sin compilación</td></tr>
+  <tr><td>Herramientas <code>tools/</code></td><td class="num">2</td><td class="num">1.544</td><td>Autocomprobación y generador de mundos falsos</td></tr>
+  <tr><td>Documentación</td><td class="num">4</td><td class="num">1.784</td><td>README, CHANGELOG, ROADMAP, análisis de LegendsViewer</td></tr>
+  <tr class="total"><td>Total</td><td class="num">54</td><td class="num">16.355</td><td></td></tr>
+</table>
+
+<div class="caja">
+  <div class="titulo">Las cuatro dependencias</div>
+  <p><code>fastapi</code> y <code>uvicorn</code> para el servidor local,
+  <code>python-dotenv</code> para leer tu clave y <code>anthropic</code> para las
+  crónicas. Nada más. Ni Node, ni npm, ni ningún paso de compilación: fue una
+  condición desde el principio y se ha respetado entera.</p>
+</div>
+
+<!-- ============================================================ 2 -->
+<h2><span class="n">2</span>El camino recorrido, versión a versión</h2>
+
+<p>Dieciocho versiones publicadas, cada una con su entrada en el
+<code>CHANGELOG.md</code>. Lo que sigue no es la lista de cambios —esa ya está
+escrita— sino <em>por qué</em> se hizo cada una.</p>
+
+<table>
+  <tr><th style="width:16mm">Versión</th><th>Qué resolvió</th></tr>
+  <tr><td><b>1.0</b></td><td>El cimiento: leer el XML sin ahogarse, guardarlo en SQLite y enseñarlo. Aquí se decidió casi todo lo que vino después.</td></tr>
+  <tr><td><b>1.1</b></td><td>Rendimiento con mundos grandes, colores de facción derivados de los propios datos y la primera autocomprobación.</td></tr>
+  <tr><td><b>1.2</b></td><td>Las crónicas dejan de vivir en la base de datos y pasan a ser ficheros. Son lo único que cuesta dinero: no podían depender de una tabla que se borra.</td></tr>
+  <tr><td><b>1.3.0</b></td><td>La aplicación encuentra sola tu instalación de Dwarf Fortress y se trae los exports. Antes había que copiarlos a mano.</td></tr>
+  <tr><td><b>1.3.1</b></td><td>Tres cosas que estorbaban al actualizar: la interfaz vieja en caché, la importación lenta y las crónicas atrapadas en la carpeta del programa.</td></tr>
+  <tr><td><b>1.3.2</b></td><td>La mudanza a la carpeta personal también mira en las instalaciones anteriores. Se descubrió porque a ti no te encontró nada.</td></tr>
+  <tr><td><b>1.4.0</b></td><td>El mapa de pergamino, dibujado con los datos del propio export. El salto visual más grande del proyecto.</td></tr>
+  <tr><td><b>1.4.1–1.4.4</b></td><td>Los ríos. Cuatro intentos. La historia está en el apartado 5, porque es la lección más útil que ha dado el proyecto.</td></tr>
+  <tr><td><b>1.5.0</b></td><td>Los sucesos se cuentan en castellano. Un diccionario y un narrador convierten <code>hf died · cause: STRUCK</code> en una frase que se lee.</td></tr>
+  <tr><td><b>1.5.1</b></td><td>Tus ocho comentarios sobre la interfaz, contestados. Y el fallo de fondo que escondían: cada mundo escribe los nombres de los sucesos a su manera.</td></tr>
+</table>
+
+<!-- ============================================================ 3 -->
+<h2 class="salto"><span class="n">3</span>Recorrido por el código</h2>
+
+<p>Cada fichero, qué hace y por qué está separado de los demás.</p>
+
+<h3>El cimiento: leer el XML</h3>
+<table>
+  <tr><th style="width:44mm">Fichero</th><th>Qué hace</th></tr>
+  <tr><td><code>parser/xmlstream.py</code></td><td>Resuelve las tres cosas que rompen cualquier lector de XML normal ante un export de DF: está en CP437 y no en UTF-8; lleva dentro bytes de control que en realidad son símbolos (el <b>☼</b> de los objetos de calidad es uno de ellos); y pesa demasiado para cargarlo entero. Entrega bytes limpios en streaming.</td></tr>
+  <tr><td><code>parser/legends.py</code></td><td>Todo lo que se sabe sobre la <em>forma</em> del XML vive aquí y solo aquí. El resto del programa consulta la base de datos y no necesita saber qué etiquetas existen.</td></tr>
+  <tr><td><code>parser/discover.py</code></td><td>Empareja cada <code>legends.xml</code> con su <code>legends_plus.xml</code>. Los sueltos se avisan, no se ignoran en silencio.</td></tr>
+  <tr><td><code>parser/organizer.py</code></td><td>DF nombra los exports con el nombre de la carpeta de la partida (<code>region1</code>), que no dice qué mundo es. Este módulo lee el nombre real de los primeros bytes del fichero y ordena la carpeta por mundo y fecha.</td></tr>
+  <tr><td><code>parser/importer.py</code></td><td>Del XML a SQLite. Recorre el principal y luego el <code>_plus</code>, fusionando por identificador, y al terminar deduce lo que el XML no dice: la jerarquía de entidades y quién manda en cada sitio cada año.</td></tr>
+  <tr><td><code>parser/inspeccion.py</code></td><td>Los informes de «¿Algo no cuadra?». Explicado en el apartado 5.</td></tr>
+</table>
+
+<h3>Lo que se deduce de los datos</h3>
+<table>
+  <tr><th style="width:44mm">Fichero</th><th>Qué hace</th></tr>
+  <tr><td><code>model/terreno.py</code></td><td>DF no da un mapa. Da la lista de casillas que ocupa cada región y, aparte, cómo se llama y de qué tipo es. Cruzando las dos cosas sale una rejilla que cubre el mundo entero. Está comprobado que <b>no deja huecos</b>, por eso la costa sale exacta.</td></tr>
+  <tr><td><code>model/entities.py</code></td><td>Sube por la cadena de entidades hasta la civilización raíz. Sin esto no se sabe de quién es cada sitio.</td></tr>
+  <tr><td><code>model/ownership.py</code></td><td>Reconstruye la propiedad de cada sitio año a año recorriendo los sucesos. Guarda el histórico completo, no solo el estado final: es lo que alimenta el deslizador de año del mapa.</td></tr>
+  <tr><td><code>model/fortress.py</code></td><td>Deduce cuál es <em>tu</em> fortaleza (DF no lo marca en ninguna parte) y, si hay duda, te ofrece elegir una vez. Tu elección manda siempre sobre la deducción.</td></tr>
+  <tr><td><code>model/diccionario.py</code></td><td>21 tablas y 557 términos de DF a castellano: tipos de sitio, razas, castas, causas de muerte, cargos, vínculos, oficios, habilidades, esferas, objetivos, secretos, biomas.</td></tr>
+  <tr><td><code>model/narrador.py</code></td><td>155 plantillas que convierten un suceso en una frase. Es el fichero más grande del proyecto (1.181 líneas) y el que más cambia la sensación de usar el programa.</td></tr>
+</table>
+
+<h3>El servidor y la interfaz</h3>
+<table>
+  <tr><th style="width:44mm">Fichero</th><th>Qué hace</th></tr>
+  <tr><td><code>config.py</code></td><td>Todo lo que depende de tu ordenador: dónde está tu carpeta personal, dónde está el <code>.env</code>, qué puerto usar. El resto del código no necesita saberlo.</td></tr>
+  <tr><td><code>main.py</code></td><td>El servidor. También hace, al arrancar, las migraciones que hagan falta sin que tengas que enterarte.</td></tr>
+  <tr><td><code>api/</code></td><td>31 endpoints repartidos en seis ficheros por tema: mapa y sitios, figuras, fortaleza, mundos, conexión con el juego y crónicas.</td></tr>
+  <tr><td><code>ai/context.py</code></td><td>Elige qué hechos se le mandan a la IA y los compacta. Solo datos que están de verdad en la base de datos.</td></tr>
+  <tr><td><code>ai/chronicler.py</code></td><td>La única puerta que llama a la API de Anthropic. Mira primero si la crónica ya está guardada.</td></tr>
+  <tr><td><code>web/js/atlas.js</code></td><td>El mapa de pergamino, dibujado en canvas. El fondo se pinta una vez en un lienzo aparte y se copia en cada fotograma: por eso el deslizador de año va suelto.</td></tr>
+</table>
+
+<!-- ============================================================ 4 -->
+<h2 class="salto"><span class="n">4</span>Las decisiones que sostienen el resto</h2>
+
+<h3>La carpeta personal, fuera del programa</h3>
+<p>Tus exports, tu base de datos, tus crónicas y tu clave viven en
+<code>Documentos/ProLegends</code>, no dentro de la carpeta del programa. Así,
+cuando bajas una versión nueva, puedes borrar la carpeta vieja entera sin perder
+nada. Antes había que copiar cosas a mano, y bastaba con despistarse una vez
+para perder crónicas que habían costado dinero.</p>
+
+<h3>Una sola transacción al importar</h3>
+<p>Un export de 50 MB tardaba <b>32,2 segundos</b>. Metiendo toda la carga en
+una única transacción de SQLite bajó a <b>9,0 segundos</b>. También se probó
+quitar los índices durante la carga —lo que suele recomendarse— y salió
+<em>peor</em>, porque la fase que deduce jerarquías y propiedad los necesita.
+Queda anotado para no repetir el experimento.</p>
+
+<h3>Guardar el registro entero, no solo lo que se usa</h3>
+<p>Cada tabla guarda además el registro completo en JSON, y hay un cajón de
+sastre para todo lo que no tiene tabla propia. Eso significa que una vista nueva
+no obliga a volver a importar los 50 MB: el dato ya está guardado. Es la razón
+de que la versión 1.5.1 pudiera añadir un informe de tipos de suceso sin tocar
+el importador.</p>
+
+<h3>Los colores no están escritos en el código</h3>
+<p>Cada raza ocupa una franja del círculo cromático y las civilizaciones de una
+misma raza se reparten dentro de su franja. El color sale del propio dato, así
+que dos mundos distintos tienen paletas distintas y coherentes, y no hay ninguna
+lista de colores por civilización que mantener.</p>
+
+<h3>La interfaz no se queda vieja</h3>
+<p>Como la dirección es siempre <code>127.0.0.1</code>, el navegador se quedaba
+con la interfaz de la versión anterior al actualizar. Ahora el servidor manda una
+cabecera que obliga a preguntar si ha cambiado, y hay un aviso si el programa y
+la interfaz no coinciden de versión. Esto se descubrió porque te pasó a ti.</p>
+
+<div class="caja">
+  <div class="titulo">Sobre tu clave de la API</div>
+  <p>El <code>.env</code> está en <code>.gitignore</code> desde el primer commit
+  y se ha comprobado que nunca ha entrado en el repositorio. La clave no aparece
+  en ningún informe, ni en la interfaz, ni en los mensajes de error: lo que se
+  enseña es la ruta del fichero, su tamaño y su fecha, que es lo que hace falta
+  para diagnosticar problemas. Por terminal se muestra recortada.</p>
+  <p>Recordatorio que sigue en pie: la clave que se vio en aquella captura
+  <b>hay que darla por comprometida</b>. Si no la revocaste, revócala.</p>
+</div>
+
+<!-- ============================================================ 5 -->
+<h2><span class="n">5</span>Los ríos, y el método que salió de ahí</h2>
+
+<p>Merece un apartado porque es el error más caro del proyecto y lo que
+aprendimos vale para todo lo que venga.</p>
+
+<p>El mapa dibujaba los ríos como un abanico de rayas cruzando el mundo entero.
+Diagnostiqué que las coordenadas venían desordenadas y publiqué un arreglo. No
+era eso. Volvió a fallar. Tú lo dijiste claro:</p>
+
+<blockquote>«creo que tienes un mal entendido con lo ríos y deberías de comprobar
+el xml pertinente para arreglarlo»</blockquote>
+
+<p>Tenías razón. Al mirar el fichero de verdad, el recorrido de un río resultó
+ser <b>cinco números por punto</b> —posición, caudal, salida y altura— y yo los
+estaba leyendo de dos en dos. Cada punto salía de un sitio distinto del mapa: de
+ahí el abanico. El diagnóstico falso se corrigió en público, en el CHANGELOG.</p>
+
+<div class="caja">
+  <div class="titulo">La norma que salió de ahí</div>
+  <p><b>Cuando algo no cuadra, se mira tu dato antes de tocar código.</b> Para
+  eso está el botón <b>«¿Algo no cuadra?»</b>: vuelca la geografía de tu mundo,
+  los tipos de suceso con su recuento, los vínculos y las razas. Si hace falta un
+  dato nuevo para diagnosticar algo, se añade al informe y se te pide; no se
+  adivina.</p>
+</div>
+
+<p>Esa norma es exactamente la que resolvió el problema de la 1.5.1: los sucesos
+que no se entendían no eran un fallo del narrador, sino que <b>cada mundo escribe
+los nombres a su manera</b> —<code>hf died</code>, <code>hist figure died</code>,
+<code>change_hf_state</code>— y el programa solo reconocía una forma.</p>
+
+<!-- ============================================================ 6 -->
+<h2 class="salto"><span class="n">6</span>Estado de salud</h2>
+
+<h3>Lo que está comprobado</h3>
+<p>La autocomprobación (<code>tools/autocomprobacion.py</code>) tiene
+<b>19 secciones</b> y sale entera en verde. No es una lista de comprobaciones de
+juguete: genera mundos falsos con la misma forma que los de verdad, los importa,
+dibuja el mapa, narra los sucesos, levanta un servidor real y comprueba hasta las
+cabeceras del navegador.</p>
+
+<table>
+  <tr><th>Se comprueba</th><th>Cómo</th></tr>
+  <tr><td>Que el XML se lee entero, con sus símbolos raros</td><td>Mundos generados con ☼ dentro de los nombres</td></tr>
+  <tr><td>Que el mapa se puede dibujar solo con los datos</td><td>Las regiones cubren el 100 % de la rejilla, sin huecos</td></tr>
+  <tr><td>Que ningún río salta de una punta a otra del mapa</td><td>Se mide cada tramo: máximo un paso de casilla</td></tr>
+  <tr><td>Que sin el <code>_plus</code> se dice «no hay mapa»</td><td>En vez de inventarse una geografía</td></tr>
+  <tr><td>Que las 155 plantillas aguantan un suceso vacío</td><td>Se les pasa uno sin datos y ninguna revienta</td></tr>
+  <tr><td>Que las tres formas de escribir un suceso llevan a la misma frase</td><td>Sección 19, añadida en la 1.5.1</td></tr>
+  <tr><td>Que la versión coincide en los tres sitios donde se escribe</td><td>Si no, falla</td></tr>
+  <tr><td>Que el navegador no se queda con la interfaz vieja</td><td>Se levanta un servidor y se mira la cabecera</td></tr>
+</table>
+
+<h3>Rendimiento medido</h3>
+<table>
+  <tr><th>Operación</th><th>Tiempo</th></tr>
+  <tr><td>Importar un export de 50 MB</td><td class="num">9,0 s</td></tr>
+  <tr><td>Cargar el terreno de un mundo pequeño (48×48)</td><td class="num">5 ms</td></tr>
+  <tr><td>Cargar el terreno de un mundo grande (257×257)</td><td class="num">85 ms</td></tr>
+  <tr><td>Mover el deslizador de año</td><td class="num">0,3–3 ms por fotograma</td></tr>
+</table>
+
+<h3>Lo que no está comprobado, dicho claro</h3>
+<ul>
+  <li><span class="estado duda">abierto</span> <b>Las relaciones que salen todas como «hijo o hija».</b> El código que las lee está bien y en los mundos de prueba salen cónyuge, padre, hijo, deidad y amistad correctamente. Hace falta el dato de tu mundo para saber qué pasa. <em>Está esperando a que pegues el informe.</em></li>
+  <li><span class="estado duda">abierto</span> <b>Los años negativos.</b> En la crónica que me pasaste salía «nació en el año -51». Puede ser real —DF usa años negativos para lo anterior al inicio de la historia— o puede ser un fallo de lectura. No se ha verificado.</li>
+  <li><span class="estado no">sin cubrir</span> <b>La carpeta <code>tests/</code> está vacía.</b> Es a propósito: la red de seguridad es la autocomprobación, que prueba el programa entero en vez de piezas sueltas. Pero conviene saberlo.</li>
+  <li><span class="estado no">sin cubrir</span> <b>Las crónicas de IA no se prueban automáticamente</b>, porque cada prueba costaría dinero. Se prueban a mano cuando se tocan.</li>
+</ul>
+
+<!-- ============================================================ 7 -->
+<h2><span class="n">7</span>Las reglas, y cómo van</h2>
+
+<table>
+  <tr><th>Regla que pusiste</th><th style="width:22mm">Estado</th><th>Cómo se cumple</th></tr>
+  <tr><td>La clave de la API no se sube nunca</td><td><span class="estado ok">se cumple</span></td><td>En <code>.gitignore</code> desde el primer commit; nunca ha entrado en el repositorio</td></tr>
+  <tr><td>El XML no se carga en el navegador</td><td><span class="estado ok">se cumple</span></td><td>Se procesa en Python en streaming; al navegador van JSON pequeños</td></tr>
+  <tr><td>Sin frameworks con compilación ni Node</td><td><span class="estado ok">se cumple</span></td><td>HTML, CSS y JavaScript a pelo; cuatro dependencias de Python</td></tr>
+  <tr><td>Nada específico de un mundo en el código</td><td><span class="estado ok">se cumple</span></td><td>Hasta los colores se derivan del propio export</td></tr>
+  <tr><td>No inventar campos</td><td><span class="estado ok">se cumple</span></td><td>Lo que no está en el diccionario se enseña tal cual; sin coordenadas no se dibuja costa</td></tr>
+  <tr><td>No llamar a la API sin pedirlo</td><td><span class="estado ok">se cumple</span></td><td>Solo un endpoint llama, y primero mira si ya está guardada</td></tr>
+  <tr><td>Trabajar siempre en <code>main</code></td><td><span class="estado ok">se cumple</span></td><td>34 commits, ninguna rama, ningún pull request</td></tr>
+</table>
+
+<!-- ============================================================ 8 -->
+<h2><span class="n">8</span>Por dónde sigue</h2>
+
+<p>El plan completo está en <code>ROADMAP.md</code>. En orden:</p>
+
+<table>
+  <tr><th style="width:18mm">Versión</th><th>Qué trae</th></tr>
+  <tr><td><b>1.6.0</b><br><span class="suave">Interfaz</span></td><td>Buscador global, historial de navegación, direcciones enlazables, tablas ordenables y un sistema visual coherente. Aquí es donde entra el <b>selector castellano / inglés</b> que preguntaste. Es la parte más de gusto: se preparan alternativas y eliges.</td></tr>
+  <tr><td><b>1.7.0</b><br><span class="suave">Mapa</span></td><td>La segunda mitad del mapa: más detalle de terreno, capas nuevas y los remates que lo convierten en un atlas.</td></tr>
+  <tr><td><b>1.8.0</b><br><span class="suave">Crónicas</span></td><td>Que las crónicas se dejen leer: mejor selección de hechos y mejor redacción, aprovechando el mismo diccionario de la 1.5.</td></tr>
+  <tr><td><b>1.9.0</b><br><span class="suave">Sucesos</span></td><td>Los capítulos que agrupan sucesos —guerras, batallas, expediciones— contados como capítulos y no como una lista de líneas sueltas.</td></tr>
+  <tr><td><b>2.0.0</b><br><span class="suave">Récords</span></td><td>Mayores asesinos, batallas más sangrientas, reinados más largos, y árboles genealógicos dibujados en canvas.</td></tr>
+</table>
+
+<h3>Lo que hay que hacer antes de nada</h3>
+<ol>
+  <li><b>Pegar el informe de tu mundo.</b> Mapa → «¿Algo no cuadra?» → copiar.
+  Con eso se cierran las dos dudas abiertas: las relaciones y si tu export deja
+  algún tipo de suceso sin frase propia.</li>
+  <li><b>Decidir si la 1.6.0 empieza ya</b> o si antes se dedica una versión
+  corta a rematar lo que salga del informe.</li>
+</ol>
+
+<div class="caja">
+  <div class="titulo">Nuevo en este repaso</div>
+  <p>Se ha añadido un fichero <code>CLAUDE.md</code> en la raíz con las reglas de
+  seguridad, el contexto del proyecto, el mapa del código, las trampas conocidas
+  del entorno y la lista de cosas que no se tocan sin pensarlo mucho. Sirve para
+  que cualquier sesión de trabajo futura —mía o de otro— arranque sabiendo lo
+  que ya sabemos, en vez de volver a descubrirlo.</p>
+</div>
+
+<p class="fin">ProLegends 1.5.1 · Informe generado el 10 de septiembre de 2026</p>
+
+</body>
+</html>
